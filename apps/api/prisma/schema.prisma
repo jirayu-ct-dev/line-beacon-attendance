@@ -261,12 +261,17 @@ model AuditLog {
 }
 
 model RefreshToken {
-  id        String    @id @default(cuid())
-  userId    String    @map("user_id")
-  tokenHash String    @map("token_hash")
-  expiresAt DateTime  @map("expires_at")
-  revokedAt DateTime? @map("revoked_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  id String @id @default(cuid())
+  // Opaque token scheme: token = random >=48-byte hex (never stored in plain).
+  // tokenLookup = SHA-256(token) hex  -> indexed row lookup (argon2 hashes are
+  // salted, so they cannot be queried by equality).
+  // tokenHash = argon2(token)         -> verification once the row is found.
+  tokenLookup String   @unique @map("token_lookup")
+  tokenHash   String   @map("token_hash")
+  userId      String   @map("user_id")
+  expiresAt   DateTime @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
 

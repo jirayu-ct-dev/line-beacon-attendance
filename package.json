@@ -13,6 +13,7 @@
     "test": "pnpm -r test",
     "test:api": "pnpm --filter api test",
     "test:web": "pnpm --filter web test",
+    "seed:api": "pnpm --filter api db:seed",
     "gen:api": "echo \"gen:api: OpenAPI -> openapi-typescript codegen will be added in a later phase\"",
     "docker:up": "docker compose up -d postgres"
   },

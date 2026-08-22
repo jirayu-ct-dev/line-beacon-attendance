@@ -10,7 +10,10 @@ allowBuilds:
   '@scarf/scarf': false # telemetry — intentionally blocked
   '@tailwindcss/oxide': true
   argon2: true
+  cpu-features: false # optional native accelerator (ssh2) — pure-JS fallback
   esbuild: true
   prisma: true
+  protobufjs: false # postinstall minification only
+  ssh2: false # pure-JS fallback used by dockerode (testcontainers)
   unrs-resolver: true
   vue-demi: true
