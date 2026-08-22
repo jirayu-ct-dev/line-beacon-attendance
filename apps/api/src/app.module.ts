@@ -11,6 +11,8 @@ import { validateEnv } from './config/env.validation'
 import { HealthController } from './health/health.controller'
 import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
+import { BeaconLogsModule } from './modules/beacon-logs/beacon-logs.module'
+import { BeaconsModule } from './modules/beacons/beacons.module'
 import { LineModule } from './modules/line/line.module'
 import { StudentsModule } from './modules/students/students.module'
 import { PrismaModule } from './prisma/prisma.module'
@@ -48,6 +50,8 @@ import { PrismaModule } from './prisma/prisma.module'
     AuthModule,
     AuditModule,
     StudentsModule,
+    BeaconsModule,
+    BeaconLogsModule,
     LineModule,
   ],
   controllers: [HealthController],

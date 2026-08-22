@@ -28,7 +28,9 @@ export default async function (): Promise<void> {
   writeFileSync(DB_URL_FILE, databaseUrl)
   writeFileSync(CONTAINER_ID_FILE, container.getId())
 
-  execFileSync(join(process.cwd(), 'node_modules', '.bin', 'prisma'), ['migrate', 'deploy'], {
+  // Spawn the CLI's JS entry with the current node binary — node_modules/.bin
+  // sh wrappers cannot be execFileSync'd on Windows (ENOENT).
+  execFileSync(process.execPath, [join(process.cwd(), 'node_modules', 'prisma', 'build', 'index.js'), 'migrate', 'deploy'], {
     env: { ...process.env, DATABASE_URL: databaseUrl },
     stdio: 'inherit',
   })

@@ -9,7 +9,7 @@
     "start": "node dist/main",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_ENV=test jest",
+    "test": "jest",
     "postinstall": "prisma generate"
   },
   "devDependencies": {
