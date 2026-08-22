@@ -9,7 +9,9 @@ import { GlobalExceptionFilter } from './common/http/global-exception.filter'
 import { ResponseInterceptor } from './common/http/response.interceptor'
 import { validateEnv } from './config/env.validation'
 import { HealthController } from './health/health.controller'
+import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
+import { StudentsModule } from './modules/students/students.module'
 import { PrismaModule } from './prisma/prisma.module'
 
 @Module({
@@ -43,6 +45,8 @@ import { PrismaModule } from './prisma/prisma.module'
     }),
     PrismaModule,
     AuthModule,
+    AuditModule,
+    StudentsModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -50,6 +54,9 @@ import { PrismaModule } from './prisma/prisma.module'
       provide: APP_PIPE,
       useValue: new ValidationPipe({
         whitelist: true,
+        // transform: DTOs get real class instances so @Type(() => Number) can
+        // coerce query-string pagination numbers (page/pageSize/year).
+        transform: true,
         // Thai-friendly validation errors listing the offending fields (§48)
         exceptionFactory: (errors) =>
           new BadRequestException(`กรุณาตรวจสอบข้อมูล: ${[...new Set(errors.map((e) => e.property))].join(', ')}`),
