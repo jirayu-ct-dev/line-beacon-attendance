@@ -6,7 +6,11 @@ import { AppModule } from './app.module'
 import { configureApp } from './app.setup'
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true })
+  // rawBody: the LINE webhook signature is an HMAC over the exact request
+  // bytes — Nest keeps a copy of the unparsed buffer on request.rawBody
+  // (design doc §5.1 step 1). Integration tests pass the same option to
+  // createNestApplication().
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true })
   app.useLogger(app.get(Logger))
   app.enableShutdownHooks()
   configureApp(app)

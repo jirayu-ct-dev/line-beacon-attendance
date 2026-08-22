@@ -9,4 +9,8 @@ module.exports = {
   globalSetup: '<rootDir>/src/test/global-setup.ts',
   globalTeardown: '<rootDir>/src/test/global-teardown.ts',
   setupFiles: ['<rootDir>/src/test/setup-env.ts'],
+  // All specs share ONE Testcontainers database and some assert exact table
+  // counts (e.g. GET /students totals) — serialize spec files so concurrent
+  // workers cannot see each other's seed data.
+  maxWorkers: 1,
 }
