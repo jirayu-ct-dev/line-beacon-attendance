@@ -38,6 +38,61 @@ export interface Student {
   updatedAt: string
 }
 
+/** Beacon payload (apps/api BeaconResponseDto — the source of truth). */
+export interface Beacon {
+  id: string
+  hwid: string
+  name: string
+  location: string | null
+  description: string | null
+  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE'
+  createdAt: string
+  updatedAt: string
+}
+
+/** Processing status of a beacon-log row (apps/api ProcessingStatus, spec §18). */
+export type BeaconLogStatus =
+  | 'RECEIVED'
+  | 'PROCESSED'
+  | 'DUPLICATE'
+  | 'UNKNOWN_USER'
+  | 'UNKNOWN_BEACON'
+  | 'NO_ACTIVE_ACTIVITY'
+  | 'OUTSIDE_CHECKIN_WINDOW'
+  | 'ERROR'
+
+/** Nested student shown on beacon-log rows (null when the LINE user is not linked). */
+export interface BeaconLogStudent {
+  id: string
+  studentCode: string
+  name: string
+}
+
+/** Nested beacon shown on beacon-log rows (null for unregistered hwids). */
+export interface BeaconLogBeacon {
+  id: string
+  name: string
+}
+
+/** Beacon-log row (apps/api BeaconLogResponseDto — spec §18). */
+export interface BeaconLog {
+  id: string
+  lineUserId: string
+  student: BeaconLogStudent | null
+  beacon: BeaconLogBeacon | null
+  hwid: string
+  eventType: string
+  eventTimestamp: string
+  webhookEventId: string
+  processingStatus: BeaconLogStatus
+  createdAt: string
+}
+
+/** Beacon-log detail — adds the raw LINE payload (apps/api BeaconLogDetailDto). */
+export interface BeaconLogDetail extends BeaconLog {
+  rawPayload: unknown
+}
+
 /** Row validation report from POST /students/import/preview (and apply errors). */
 export interface ImportRowResult {
   row: number
