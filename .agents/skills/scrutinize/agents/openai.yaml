@@ -1,0 +1,7 @@
+interface:
+  display_name: "Scrutinize"
+  short_description: "Review changes end-to-end with an outsider lens"
+  default_prompt: "Use $scrutinize to review this change end-to-end and challenge whether a simpler approach exists."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web UI Coding Standards"
+  short_description: "Build consistent Nuxt interfaces with Tailwind"
+  default_prompt: "Use $web-ui-coding-standards to implement this Nuxt interface with Tailwind CSS, project Toast/Confirm patterns, and Lucide Icons."
