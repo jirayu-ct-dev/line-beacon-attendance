@@ -40,5 +40,13 @@ export default tseslint.config(
       'vue/multi-word-component-names': 'off',
     },
   },
+  {
+    // Nuxt auto-imports (ref, useAuth, definePageMeta, ...) are not visible to
+    // no-undef inside .vue script blocks; vue-tsc (pnpm typecheck) covers them.
+    files: ['apps/web/**/*.vue'],
+    rules: {
+      'no-undef': 'off',
+    },
+  },
   prettier,
 )
