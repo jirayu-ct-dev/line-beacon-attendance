@@ -31,6 +31,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: BadgeColor }> = {
   DRAFT: { label: 'ฉบับร่าง', color: 'neutral' },
   PUBLISHED: { label: 'เผยแพร่', color: 'success' },
   CANCELLED: { label: 'ยกเลิก', color: 'error' },
+  // Activity time state (computed, spec §12)
+  UPCOMING: { label: 'ยังไม่เริ่ม', color: 'info' },
+  CHECKIN_OPEN: { label: 'เปิดเช็คชื่อ', color: 'success' },
+  ONGOING: { label: 'กำลังดำเนินการ', color: 'primary' },
+  COMPLETED: { label: 'จบแล้ว', color: 'neutral' },
 }
 
 const config = computed(() => STATUS_CONFIG[props.status] ?? { label: props.status, color: 'neutral' as BadgeColor })

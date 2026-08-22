@@ -93,6 +93,39 @@ export interface BeaconLogDetail extends BeaconLog {
   rawPayload: unknown
 }
 
+/** Computed activity time state (apps/api ActivityTimeState, spec §12). */
+export type ActivityTimeState = 'UPCOMING' | 'CHECKIN_OPEN' | 'ONGOING' | 'COMPLETED'
+
+export interface ActivityCreator {
+  id: string
+  username: string
+}
+
+/** Activity list row (apps/api ActivityResponseDto — the source of truth). */
+export interface Activity {
+  id: string
+  name: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string
+  checkinOpenAt: string
+  lateAt: string
+  checkinCloseAt: string
+  status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED'
+  timeState: ActivityTimeState
+  createdBy: string
+  creator: ActivityCreator
+  beaconCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** Activity detail — adds the linked beacons (apps/api ActivityDetailDto). */
+export interface ActivityDetail extends Activity {
+  beacons: Beacon[]
+}
+
 /** Row validation report from POST /students/import/preview (and apply errors). */
 export interface ImportRowResult {
   row: number
