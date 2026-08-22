@@ -1,17 +1,29 @@
 {
   "name": "line-beacon-attendance",
-  "type": "module",
   "private": true,
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "dev": "pnpm --parallel --filter api --filter web run dev",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:api": "pnpm --filter api test",
+    "test:web": "pnpm --filter web test",
+    "gen:api": "echo \"gen:api: OpenAPI -> openapi-typescript codegen will be added in a later phase\"",
+    "docker:up": "docker compose up -d postgres"
   },
-  "dependencies": {
-    "nuxt": "^4.5.2",
-    "vue": "^3.5.41",
-    "vue-router": "^5.2.0"
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.10.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.67.0"
   }
 }

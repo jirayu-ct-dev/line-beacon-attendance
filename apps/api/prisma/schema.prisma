@@ -1,0 +1,274 @@
+// LINE Beacon Attendance — database schema
+// Tables per spec §33 (+ refresh_tokens per design doc §7).
+// Column names are snake_case to match the spec; Prisma fields are camelCase.
+// All DateTime columns map to PostgreSQL timestamp(3) (UTC) by default.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  ORGANIZER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BeaconStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum ActivityStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+enum CheckinMethod {
+  BEACON
+  MANUAL
+}
+
+enum ProcessingStatus {
+  RECEIVED
+  PROCESSED
+  DUPLICATE
+  UNKNOWN_USER
+  UNKNOWN_BEACON
+  NO_ACTIVE_ACTIVITY
+  OUTSIDE_CHECKIN_WINDOW
+  ERROR
+}
+
+enum NotificationChannel {
+  LINE
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  username     String     @unique
+  passwordHash String     @map("password_hash")
+  role         UserRole
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  activities     Activity[]
+  manualChecks   Attendance[]    @relation("ManualCheckins")
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model Student {
+  id          String        @id @default(cuid())
+  studentCode String        @unique @map("student_code")
+  firstName   String        @map("first_name")
+  lastName    String        @map("last_name")
+  birthDate   DateTime      @map("birth_date") @db.Date
+  year        Int
+  email       String?
+  status      StudentStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  lineAccount   LineAccount?
+  attendances   Attendance[]
+  beaconLogs    BeaconLog[]
+  notifications Notification[]
+
+  @@map("students")
+}
+
+model LineAccount {
+  id          String   @id @default(cuid())
+  studentId   String   @unique @map("student_id")
+  lineUserId  String   @unique @map("line_user_id")
+  displayName String?  @map("display_name")
+  pictureUrl  String?  @map("picture_url")
+  linkedAt    DateTime @default(now()) @map("linked_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("line_accounts")
+}
+
+model Beacon {
+  id          String       @id @default(cuid())
+  hwid        String       @unique
+  name        String
+  location    String?
+  description String?
+  status      BeaconStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  activityBeacons ActivityBeacon[]
+  attendances     Attendance[]
+  beaconLogs      BeaconLog[]
+
+  @@map("beacons")
+}
+
+model Activity {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  location       String?
+  startAt        DateTime       @map("start_at")
+  endAt          DateTime       @map("end_at")
+  checkinOpenAt  DateTime       @map("checkin_open_at")
+  lateAt         DateTime       @map("late_at")
+  checkinCloseAt DateTime       @map("checkin_close_at")
+  status         ActivityStatus @default(DRAFT)
+  createdBy      String         @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  user          User            @relation(fields: [createdBy], references: [id])
+  beacons       ActivityBeacon[]
+  attendances   Attendance[]
+  notifications Notification[]
+
+  @@map("activities")
+}
+
+model ActivityBeacon {
+  id         String   @id @default(cuid())
+  activityId String   @map("activity_id")
+  beaconId   String   @map("beacon_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  activity Activity @relation(fields: [activityId], references: [id])
+  beacon   Beacon   @relation(fields: [beaconId], references: [id])
+
+  @@unique([activityId, beaconId])
+  @@map("activity_beacons")
+}
+
+model Attendance {
+  id            String           @id @default(cuid())
+  activityId    String           @map("activity_id")
+  studentId     String           @map("student_id")
+  checkInAt     DateTime         @map("check_in_at")
+  status        AttendanceStatus
+  checkinMethod CheckinMethod    @map("checkin_method")
+  beaconId      String?          @map("beacon_id")
+  checkedInBy   String?          @map("checked_in_by")
+  manualReason  String?          @map("manual_reason")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  activity     Activity @relation(fields: [activityId], references: [id])
+  student      Student  @relation(fields: [studentId], references: [id])
+  beacon       Beacon?  @relation(fields: [beaconId], references: [id])
+  checkedInByU User?    @relation("ManualCheckins", fields: [checkedInBy], references: [id])
+
+  @@unique([activityId, studentId])
+  @@map("attendances")
+}
+
+model BeaconLog {
+  id               String           @id @default(cuid())
+  lineUserId       String           @map("line_user_id")
+  studentId        String?          @map("student_id")
+  beaconId         String?          @map("beacon_id")
+  hwid             String
+  eventType        String           @map("event_type")
+  eventTimestamp   DateTime         @map("event_timestamp")
+  webhookEventId   String           @unique @map("webhook_event_id")
+  processingStatus ProcessingStatus @default(RECEIVED) @map("processing_status")
+  rawPayload       Json             @map("raw_payload")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  student Student? @relation(fields: [studentId], references: [id])
+  beacon  Beacon?  @relation(fields: [beaconId], references: [id])
+
+  @@map("beacon_logs")
+}
+
+model Notification {
+  id           String              @id @default(cuid())
+  studentId    String              @map("student_id")
+  activityId   String?             @map("activity_id")
+  type         String
+  channel      NotificationChannel @default(LINE)
+  status       NotificationStatus  @default(PENDING)
+  message      String
+  sentAt       DateTime?           @map("sent_at")
+  errorMessage String?             @map("error_message")
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  student  Student   @relation(fields: [studentId], references: [id])
+  activity Activity? @relation(fields: [activityId], references: [id])
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}

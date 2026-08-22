@@ -1,13 +1,20 @@
-# Nuxt dev/build outputs
+# Node dependencies
+node_modules
+
+# Build outputs
+dist
 .output
-.data
 .nuxt
 .nitro
 .cache
-dist
+coverage
+*.tsbuildinfo
 
-# Node dependencies
-node_modules
+# Local data
+.data
+
+# Prisma generated client (regenerated via `prisma generate`)
+apps/api/src/generated
 
 # Logs
 logs

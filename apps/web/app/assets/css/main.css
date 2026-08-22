@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+/* Semantic color tokens (design doc §6.2): single place where Tailwind theme
+   colors map to the Nuxt UI CSS variables. Do not hard-code palettes in templates. */
+@theme inline {
+  --color-primary: var(--ui-primary);
+  --color-secondary: var(--ui-secondary);
+  --color-success: var(--ui-success);
+  --color-warning: var(--ui-warning);
+  --color-error: var(--ui-error);
+  --color-info: var(--ui-info);
+  /* Nuxt UI has no single --ui-neutral variable; use the palette's 500 shade */
+  --color-neutral: var(--ui-color-neutral-500);
+}
+
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
