@@ -46,6 +46,44 @@ export interface ImportRowResult {
   errors: string[]
 }
 
+/** Student profile subset on the LIFF /me payload (apps/api StudentProfileDto). */
+export interface StudentProfile {
+  id: string
+  studentCode: string
+  firstName: string
+  lastName: string
+  /** YYYY-MM-DD (ค.ศ.) */
+  birthDate: string
+  year: number
+  email: string | null
+  status: 'ACTIVE' | 'INACTIVE'
+}
+
+/** LINE link info on the LIFF /me payload (apps/api LineLinkInfoDto). */
+export interface LineLinkInfo {
+  lineUserId: string
+  displayName: string | null
+  pictureUrl: string | null
+  linkedAt: string
+}
+
+/** GET /me payload (apps/api MeResponseDto). */
+export interface MeResponse {
+  linked: boolean
+  student: StudentProfile | null
+  line: LineLinkInfo | null
+}
+
+/** One attendance record on GET /me/attendances (apps/api AttendanceItemDto). */
+export interface AttendanceItem {
+  id: string
+  activityId: string
+  activityName: string
+  checkInAt: string
+  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'
+  checkinMethod: 'BEACON' | 'MANUAL'
+}
+
 export interface ImportPreviewResult {
   totalRows: number
   validRows: number

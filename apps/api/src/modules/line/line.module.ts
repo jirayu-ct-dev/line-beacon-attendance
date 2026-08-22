@@ -6,18 +6,30 @@ import { LineNotificationService } from './line-notification.service'
 import { BeaconEventService } from './beacon-event.service'
 import { LineWebhookController } from './line-webhook.controller'
 import { LineWebhookService } from './line-webhook.service'
+import { LineLinkController } from './line-link.controller'
+import { MeController } from './me.controller'
+import { LineLinkService } from './line-link.service'
+import { LineTokenService, LINE_OIDC_DISCOVERY, LINE_OIDC_DISCOVERY_URL } from './line-token.service'
 
 /**
- * LINE integration (Phase 4a): webhook pipeline + notification service
- * (spec §9/§10/§20/§36). The LIFF link/unlink endpoints and the attendance
- * engine arrive in Phase 4b/Phase 7.
+ * LINE integration: webhook pipeline + notification service (Phase 4a) and
+ * LIFF authentication + account linking + student /me endpoints (Phase 4b,
+ * spec §7.1/§35). The attendance engine arrives in Phase 7.
  */
 @Module({
-  controllers: [LineWebhookController],
+  controllers: [LineWebhookController, LineLinkController, MeController],
   providers: [
     LineWebhookService,
     BeaconEventService,
     LineNotificationService,
+    LineLinkService,
+    LineTokenService,
+    {
+      // LINE's OIDC discovery URL — a DI token so unit tests can point the
+      // verification at a local JWKS server instead of the real LINE endpoint.
+      provide: LINE_OIDC_DISCOVERY,
+      useValue: LINE_OIDC_DISCOVERY_URL,
+    },
     {
       // Null when LINE_CHANNEL_ACCESS_TOKEN is unset (dev without an Official
       // Account) — the notification service then skips sends gracefully.

@@ -30,7 +30,12 @@ export const AUDIT_ACTIONS = [
 export type AuditAction = (typeof AUDIT_ACTIONS)[number]
 
 export interface AuditEntry {
-  userId: string
+  /**
+   * Acting dashboard user. Null for student self-service actions (LINE
+   * link/unlink from LIFF) — the actor is the student identified in the
+   * old/new snapshots, not any users row (spec §56).
+   */
+  userId: string | null
   action: AuditAction
   entityType: string
   entityId: string

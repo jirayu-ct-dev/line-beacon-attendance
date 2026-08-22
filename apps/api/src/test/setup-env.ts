@@ -13,6 +13,8 @@ const DB_URL_FILE = join(tmpdir(), 'line-beacon-attendance-test-db.url')
  * EMPTY LINE_CHANNEL_SECRET which would otherwise make the webhook 503.
  */
 export const TEST_LINE_CHANNEL_SECRET = 'test-line-channel-secret'
+/** LINE Login channel id for LIFF ID-token verification (line-link.spec.ts mocks LineTokenService, but the app boots with a sane value). */
+export const TEST_LINE_LOGIN_CHANNEL_ID = '1234567890'
 
 process.env.NODE_ENV = 'test'
 process.env.DATABASE_URL = readFileSync(DB_URL_FILE, 'utf8').trim()
@@ -21,4 +23,7 @@ if (!process.env.JWT_SECRET) {
 }
 if (!process.env.LINE_CHANNEL_SECRET) {
   process.env.LINE_CHANNEL_SECRET = TEST_LINE_CHANNEL_SECRET
+}
+if (!process.env.LINE_LOGIN_CHANNEL_ID) {
+  process.env.LINE_LOGIN_CHANNEL_ID = TEST_LINE_LOGIN_CHANNEL_ID
 }

@@ -12,6 +12,13 @@ export default defineNuxtConfig({
   devServer: {
     port: 3000,
   },
+  runtimeConfig: {
+    public: {
+      // LIFF app id (design doc §6.5/§8) — set via NUXT_PUBLIC_LIFF_ID for the
+      // /liff/* pages. Empty in dev until a LIFF app + tunnel exist.
+      liffId: '',
+    },
+  },
   modules: ['@nuxt/ui', '@nuxt/icon'],
   css: ['~/assets/css/main.css'],
   icon: {

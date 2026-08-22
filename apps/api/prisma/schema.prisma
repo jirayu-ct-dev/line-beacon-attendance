@@ -247,7 +247,9 @@ model Notification {
 
 model AuditLog {
   id         String   @id @default(cuid())
-  userId     String   @map("user_id")
+  // Nullable: student self-service actions (LINE link/unlink from LIFF, spec
+  // §56 LINE_ACCOUNT_LINKED/LINE_ACCOUNT_UNLINKED) have no dashboard user actor.
+  userId     String?  @map("user_id")
   action     String
   entityType String   @map("entity_type")
   entityId   String   @map("entity_id")
@@ -255,7 +257,7 @@ model AuditLog {
   newValue   Json?    @map("new_value")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }

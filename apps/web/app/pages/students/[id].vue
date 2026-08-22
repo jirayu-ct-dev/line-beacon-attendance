@@ -8,6 +8,8 @@ definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const nuxtApp = useNuxtApp()
+const toast = useToast()
+const { confirm } = useConfirm()
 
 const student = ref<Student | null>(null)
 const loading = ref(true)
@@ -48,6 +50,31 @@ const profileRows = computed(() => [
   { label: 'สร้างเมื่อ', value: student.value ? formatDateTime(student.value.createdAt) : '' },
   { label: 'อัปเดตล่าสุด', value: student.value ? formatDateTime(student.value.updatedAt) : '' },
 ])
+
+// --- admin unlink of the student's LINE account (spec §7.1) -----------------------
+
+const unlinking = ref(false)
+
+const onUnlinkLine = async (): Promise<void> => {
+  if (!student.value || unlinking.value) return
+  const confirmed = await confirm({
+    title: 'ยกเลิกการเชื่อมบัญชี LINE',
+    description: `${student.value.firstName} ${student.value.lastName} (${student.value.studentCode}) จะไม่สามารถเช็คชื่อผ่าน LINE Beacon ได้จนกว่าจะลงทะเบียนเชื่อมบัญชีใหม่`,
+    confirmText: 'ยกเลิกการเชื่อม',
+    tone: 'error',
+  })
+  if (!confirmed) return
+  unlinking.value = true
+  try {
+    await nuxtApp.$api<ApiEnvelope<Student>>(`/students/${student.value.id}/unlink-line`, { method: 'POST' })
+    toast.add({ title: 'ยกเลิกการเชื่อมบัญชี LINE สำเร็จ', color: 'success', icon: 'lucide:circle-check' })
+    await fetchStudent()
+  } catch {
+    toast.add({ title: 'ยกเลิกการเชื่อมบัญชี LINE ไม่สำเร็จ กรุณาลองอีกครั้ง', color: 'error', icon: 'lucide:circle-alert' })
+  } finally {
+    unlinking.value = false
+  }
+}
 </script>
 
 <template>
@@ -115,6 +142,16 @@ const profileRows = computed(() => [
           </div>
         </div>
         <UButton icon="lucide:pencil" label="แก้ไขข้อมูล" @click="editOpen = true" />
+        <UButton
+          v-if="student.lineLinked"
+          color="error"
+          variant="outline"
+          icon="lucide:unlink"
+          label="ยกเลิกการเชื่อม LINE"
+          :loading="unlinking"
+          :disabled="unlinking"
+          @click="onUnlinkLine"
+        />
       </div>
 
       <UCard>

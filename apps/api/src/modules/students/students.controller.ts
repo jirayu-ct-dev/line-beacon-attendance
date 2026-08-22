@@ -102,6 +102,13 @@ export class StudentsController {
   async enable(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<StudentResponseDto> {
     return this.studentsService.setStatus(id, StudentStatus.ACTIVE, user.id)
   }
+
+  @Post(':id/unlink-line')
+  @ApiOperation({ summary: 'Unlink the student LINE account (admin reset, spec §7.1)' })
+  @ApiOkResponse({ type: StudentResponseDto })
+  async unlinkLine(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<StudentResponseDto> {
+    return this.studentsService.unlinkLine(id, user.id)
+  }
 }
 
 function requireFile(file: Express.Multer.File | undefined): Express.Multer.File {

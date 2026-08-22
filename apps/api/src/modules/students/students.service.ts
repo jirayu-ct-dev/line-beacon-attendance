@@ -133,6 +133,31 @@ export class StudentsService {
     return toResponse(updated)
   }
 
+  /**
+   * Admin unlink of a student's LINE account (spec §7.1: "ต้องมีวิธี Unlink /
+   * Reset โดย Admin"). Idempotent: no link → no-op (no extra audit row).
+   */
+  async unlinkLine(id: string, actorId: string): Promise<StudentResponseDto> {
+    const current = await this.findOrThrow(id)
+    const account = await this.prisma.lineAccount.findUnique({ where: { studentId: id } })
+    if (!account) return toResponse(current)
+
+    await this.prisma.lineAccount.delete({ where: { id: account.id } })
+    await this.audit.log({
+      userId: actorId,
+      action: 'LINE_ACCOUNT_UNLINKED',
+      entityType: 'LINE_ACCOUNT',
+      entityId: account.id,
+      oldValue: {
+        student_id: id,
+        student_code: current.studentCode,
+        line_user_id: account.lineUserId,
+        display_name: account.displayName,
+      },
+    })
+    return toResponse({ ...current, lineAccount: null })
+  }
+
   private async findOrThrow(id: string): Promise<StudentWithLink> {
     const student = await this.prisma.student.findUnique({
       where: { id },
