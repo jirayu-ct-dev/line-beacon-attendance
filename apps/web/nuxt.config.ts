@@ -20,6 +20,15 @@ export default defineNuxtConfig({
     },
   },
   modules: ['@nuxt/ui', '@nuxt/icon'],
+  vite: {
+    server: {
+      // Dev-only: Vite's DNS-rebind protection rejects any non-localhost Host,
+      // which blocks the cloudflared quick-tunnel URLs used for LIFF/webhook
+      // testing (design doc §8). Quick tunnels get a new subdomain per run,
+      // so allow the whole trycloudflare.com zone. No effect on production.
+      allowedHosts: ['.trycloudflare.com'],
+    },
+  },
   css: ['~/assets/css/main.css'],
   icon: {
     clientBundle: {
