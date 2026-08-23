@@ -16,7 +16,7 @@ docs/      สเปกโปรเจกต์ + เอกสารออกแ
 ```
 
 - **API contract** — `@nestjs/swagger` เปิด Swagger UI ที่ `/api/v1/docs` และ `pnpm gen:api` generate type ให้ฝั่ง web (`apps/web/openapi.d.ts`) ด้วย `openapi-typescript`
-- **Ports** — web `3000`, api `4000`, postgres `5433` (dev ใช้ web proxy `/api` → api จึงไม่มีปัญหา CORS/cookie; postgres เผย port 5433 เพื่อเลี่ยง PostgreSQL ที่ติดตั้งไว้บนเครื่อง port 5432)
+- **Ports** — web `3000`, api `4000`, postgres `5437` (dev ใช้ web proxy `/api` → api จึงไม่มีปัญหา CORS/cookie; postgres เผย port 5437 เพื่อเลี่ยง PostgreSQL ที่ติดตั้งไว้บนเครื่อง port 5432)
 
 ## สิ่งที่ต้องมี
 
@@ -27,11 +27,11 @@ docs/      สเปกโปรเจกต์ + เอกสารออกแ
 
 ```bash
 pnpm install                      # ครั้งแรก: ต้องมี DATABASE_URL สำหรับ prisma generate
-DATABASE_URL='postgresql://postgres:postgres@localhost:5433/dev' 
+DATABASE_URL='postgresql://postgres:postgres@localhost:5437/dev' 
 
 pnpm install
 
-pnpm docker:up                    # postgres 17 บน localhost:5433
+pnpm docker:up                    # postgres 17 บน localhost:5437
 
 cp .env.example apps/api/.env     # ตั้ง JWT_SECRET (อย่างน้อย 16 ตัวอักษร) ก่อนรัน
 pnpm --filter api exec prisma migrate deploy
