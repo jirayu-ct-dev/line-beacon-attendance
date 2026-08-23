@@ -1,202 +1,200 @@
 ---
 name: line-beacon-development
-description: หลักการทำงานและการพัฒนา LINE Beacon + LINE Messaging API + LIFF — flow ของ beacon event ตั้งแต่อุปกรณ์จริงถึง webhook, signature verification, reply/push message, LINE Login ID token, การตั้งค่า LINE Developers Console, การดีบั๊กเมื่อ beacon ไม่ทริกเกอร์ และการจำลอง/ทดสอบ webhook โดยไม่ต้องมีอุปกรณ์จริง ใช้ทุกครั้งที่งานแตะ LINE Beacon, LINE Official Account/bot, Messaging API webhook, LINE Login, LIFF, หรือการส่งข้อความแจ้งเตือนผ่าน LINE — แม้ผู้ใช้แค่พูดว่า "beacon ไม่ทำงาน", "เช็คชื่ออัตโนมัติ" หรือ "ส่งข้อความ LINE"
+description: คู่มือพัฒนา LINE Beacon และแพลตฟอร์ม LINE สำหรับใช้งานหลากหลายงาน — proximity notification, แจ้งเตือนตามสถานที่, check-in/presence, คูปองหน้าร้าน, ไกด์นิทรรศการ, stamp rally, analytics — ครอบคลุมหลักการทำงานของ beacon event, webhook + signature verification, reply/push/multicast/broadcast API, LIFF + LINE Login ID token, อุปกรณ์ (LINE Beacon และ LINE Simple Beacon แบบ DIY เช่น ESP32), การตั้งค่า LINE Developers Console, การดีบั๊ก และการทดสอบโดยไม่ต้องมีอุปกรณ์จริง ใช้ทุกครั้งที่งานแตะ LINE Beacon, LINE Official Account/bot, Messaging API, LINE Login, LIFF, อุปกรณ์ BLE beacon หรือการส่งข้อความ LINE — แม้ผู้ใช้แค่พูดว่า "beacon ไม่ทำงาน" หรือ "ส่งข้อความ LINE"
 ---
 
 # LINE Beacon Development
 
-คู่มือสำหรับ agent ที่ต้องพัฒนา/ดีบั๊กระบบที่ใช้ LINE Beacon หรือ LINE Messaging API
-ข้อมูลบางส่วนมาจากการใช้งานจริงในโปรเจกต์นี้ (LINE Beacon Attendance) — ส่วนที่เป็น
-กฎเฉพาะของ repo นี้จะระบุชัดว่า "ใน repo นี้"
+คู่มือระดับ "รู้ว่าใช้ยังไง" สำหรับ agent ที่ต้องสร้างหรือดีบั๊กระบบที่ใช้ LINE Beacon / LINE
+Messaging API / LIFF — เนื้อหาเป็นกลางต่อทุก use case (โปรเจกต์ใน repo นี้ใช้ทำระบบเช็คชื่อ
+ซึ่งเป็นเพียงหนึ่งตัวอย่าง — ดูท้ายไฟล์) ข้อเท็จจริงเชิงเทคนิคยึดจากเอกสารทางการของ LINE
+บวกประสบการณ์ใช้งานจริง
 
-## 1. หลักการทำงาน — beacon event เกิดขึ้นได้อย่างไร
+## 1. LINE Beacon ใช้ทำอะไรได้บ้าง (เลือก pattern ให้ตรงงาน)
+
+LINE Beacon = รู้ว่า "ผู้ใช้ LINE อยู่ใกล้จุดใด" แล้วให้ระบบเราทำอะไรบางอย่างต่อ
+
+| Use case | กลไกหลัก |
+|---|---|
+| ข้อความต้อนรับ/โปรโมชันตอนเดินผ่านหน้าร้าน (proximity marketing, O2O) | enter event → reply/push ข้อความ |
+| Check-in / ทำเนียบการเข้าใช้พื้นที่ (ออฟฟิศ, ห้องแล็บ, ห้องสมุด, คลาสเรียน, งานอีเวนต์) | enter event → สร้าง record แบบกันซ้ำ |
+| Stamp rally / เกมเก็บแสตมทัวร์หลายจุด | หลาย hwid → นับครบชุดแล้วให้รางวัล |
+| คูปอง/สิทธิพิเศษตามสถานที่ | enter event → บันทึกสิทธิ + แจ้งเตือน |
+| ไกด์ตามจุด (พิพิธภัณฑ์, นิทรรศการ, โรงพยาบาล, สาขา) | LIFF + beacon → เปิดหน้าเว็บเนื้อหาตามจุด |
+| วัด footfall / สถิติคนเข้าพื้นที่รายช่วงเวลา | นับ event ที่ persist ไว้ (อย่าส่งข้อความทุก event) |
+| Automation ตาม presence (เปิดอุปกรณ์, แจ้งทีมหน้างาน) | webhook ส่งต่อไประบบอื่น (webhook relay) |
+| หลักฐานการปฏิบัติงานภาคสนาม (proof-of-presence) | event timestamp ของ LINE เป็นเวลาอ้างอิง |
+
+ข้อจำกัดพื้นฐานที่ต้องบอกผู้ใช้ตั้งแต่ต้น: **LINE Beacon ใช้ได้เฉพาะประเทศญี่ปุ่น
+ไต้หวัน และไทย** และระบบจะได้ event เฉพาะผู้ใช้ที่ **แอด OA เป็นเพื่อนแล้ว** (§3)
+
+## 2. Capability map — สิ่งที่แพลตฟอร์ม LINE ให้ใช้ (มองเป็นชุดเครื่องมือ)
+
+| ความสามารถ | กลไก | หมายเหตุ |
+|---|---|---|
+| รับรู้ว่าผู้ใช้อยู่ใกล้ beacon | Webhook `beacon` event | หัวใจของทุก use case — §4 |
+| ตอบกลับทันทีหลังได้ event | `POST /v2/bot/message/reply` | ฟรี ไม่นับโควตา แต่ใช้ replyToken ครั้งเดียว ~1 นาที |
+| ส่งข้อความเองเมื่อไรก็ได้ | `POST /v2/bot/message/push` | นับโควตาตามแพ็กเกจ OA; ผู้รับต้องเป็นเพื่อน bot |
+| ส่งกลุ่มผู้ใช้พร้อมกัน | `POST /v2/bot/message/multicast` | เอาผู้รับหลาย id ในคำขอเดียว |
+| ประกาศทุกคนที่เป็นเพื่อน | `POST /v2/bot/message/broadcast` | ใช้กับข่าวประกาศ ไม่ใช่ per-location |
+| เว็บแอปใน LINE | LIFF (`liff.init` + endpoint URL) | เปิดหน้าเว็บแบบ login อัตโนมัติ — §7 |
+| ยืนยันตัวตนผู้ใช้ฝั่งเว็บ/backend | LINE Login ID token + JWKS | `sub` = lineUserId ที่เชื่อถือได้ |
+| ข้อมูลโปรไฟล์ผู้ใช้ | `GET /v2/bot/profile/{userId}` | ชื่อ/รูป สำหรับแสดงผล |
+| เมนูคงที่ในห้องแชท | Rich Menu | ทางลัดเข้า LIFF/ฟีเจอร์ — ทำผ่าน console ได้ |
+
+ทุก endpoint อยู่ที่ `https://api.line.me` พร้อม header
+`Authorization: Bearer <channel access token>` และส่งได้สูงสุด 5 ข้อความต่อคำขอ
+(ตัวอย่างโค้ดจริงอยู่ §6)
+
+## 3. หลักการทำงาน — event เดินทางอย่างไร และเงื่อนไขที่มันจะเกิดจริง
 
 ```text
 [อุปกรณ์ Beacon] --BLE--> [แอป LINE บนมือถือ] --> [เซิร์ฟเวอร์ LINE]
                                                        |
                                        POST webhook (beacon event)
                                                        v
-                                    [webhook URL ของ Official Account เจ้าของ beacon]
+                                    [webhook URL ของ OA เจ้าของ beacon]
 ```
 
-ประเด็นสำคัญที่ต้องเข้าใจก่อนเขียนโค้ดใด ๆ:
+- **เซิร์ฟเวอร์ของเราไม่เคยคุยกับ beacon โดยตรง** — อุปกรณ์ broadcast สัญญาณ BLE ที่มี
+  **HW ID** เป็นตัวระบุ แอป LINE เป็นคนฟังแล้วรายงานเซิร์ฟเวอร์ LINE และ LINE เป็นคนยิง
+  webhook มาหาเรา — "beacon ไม่ทำงาน" ส่วนใหญ่ปัญหาอยู่ขั้นตอนกลาง ไม่ใช่โค้ดเรา
+- **Beacon ทุกตัวสังกัด OA ตัวเดียว** — HWID ถูกออกให้ OA ใด event ก็ไป webhook ของ OA
+  นั้นเท่านั้น (พลาดบ่อยมากเมื่อมีหลายโปรเจกต์ใน LINE account เดียวกัน)
 
-1. **เซิร์ฟเวอร์ของเราไม่เคยคุยกับ beacon โดยตรง** — อุปกรณ์ broadcast สัญญาณ BLE
-   (LINE Simple Beacon frame) ที่มี **HW ID** (hex 10 ตัว) เป็นตัวระบุ แอป LINE บน
-   มือถือเป็นคนฟังสัญญาณแล้วรายงานขึ้นเซิร์ฟเวอร์ของ LINE และ LINE เป็นคนยิง webhook
-   มาหาเรา ดังนั้น "beacon ไม่ทำงาน" ส่วนใหญ่ปัญหาอยู่ที่ขั้นตอนกลาง ไม่ใช่โค้ดเรา
-2. **Beacon ทุกตัวสังกัด Official Account (OA/bot) ตัวเดียว** — HW ID ถูกออกให้ OA ใด
-   event ก็ถูกส่งไป webhook ของ OA นั้นเท่านั้น ตั้ง webhook ถูกแต่ beacon สังกัด OA
-   อื่น = ไม่มี event มาถึงเราเลย (พลาดบ่อยมากเมื่อทำหลายโปรเจกต์ใน LINE account เดียวกัน)
-3. **เวลาใน event (`timestamp`) คือเวลาที่ LINE ตรวจจับ beacon เป็น milliseconds epoch** —
-   ถ้าระบบใช้เวลานี้เป็นเวลาเหตุการณ์ (เช่น check-in) ให้ใช้ค่านี้เสมอ ห้ามใช้เวลาที่
-   server ได้รับ webhook เพราะ LINE อาจ retry ทีหลัง
-4. **`replyToken` ใช้ได้ครั้งเดียว หมดอายุ ~1 นาที** — ถ้าจะตอบกลับผู้ใช้ ต้องเรียก
-   reply โดยเร็ว หลังจากนั้นต้องใช้ push แทน (ดู §4)
+เงื่อนไขครบ 5 ข้อที่ event จะถึง webhook (ไล่ตามลำดับนี้ทุกครั้งที่ "ไม่ทริกเกอร์"):
 
-## 2. เงื่อนไขครบ 5 ข้อที่ beacon event จะถึง webhook ของเรา
-
-ตรวจตามลำดับนี้ทุกครั้งที่ "beacon ไม่ทริกเกอร์" (เรียงจากที่คนพลาดบ่อยที่สุด):
-
-1. **ผู้ใช้เพิ่ม OA เป็นเพื่อนแล้วก่อนหน้านี้** — LINE ส่ง beacon event เฉพาะผู้ใช้ที่
-   "แอด OA ที่เป็นเจ้าของ beacon เป็นเพื่อนไว้ก่อนแล้ว" (ยืนยันจากเอกสารทางการของ LINE)
-   แบนเนอร์ที่เด้งตอนเจอ beacon ใช้ชวนให้กดแอดเพื่อนได้ แต่ event จะเริ่มมาหลังแอดแล้วเท่านั้น
+1. **ผู้ใช้เพิ่ม OA เป็นเพื่อนแล้วก่อนหน้านี้** — LINE ส่ง beacon event เฉพาะผู้ที่แอด OA
+   เจ้าของ beacon ไว้ก่อนแล้ว (แบนเนอร์ที่เด้งตอนเจอ beacon ช่วยชวนให้กดแอดได้)
 2. **มือถือเปิด Bluetooth** และแอป LINE ไม่ถูกหยุดทำงานเบื้องหลัง
 3. **เปิด "Use LINE Beacon" ในแอป LINE** — Settings → Privacy → Use LINE Beacon
-   (คนพลาดข้อนี้บ่อยที่สุด เพราะปิดอยู่โดยดีฟอลต์)
-4. **Webhook URL ถูกตั้งและเปิดใช้งาน** ใน Messaging API channel — กดปุ่ม **Verify**
-   แล้วต้องขึ้นสำเร็จ และสวิตช์ **Use webhook = ON** (ตั้ง URL อย่างเดียวไม่พอ)
-5. **Beacon นั้นลงทะเบียนสังกัด OA ตัวเดียวกับ channel ที่เราตั้ง webhook** และอุปกรณ์
-   เปิดอยู่จริง / อยู่ในระยะ (LINE Beacon ใช้ได้ในญี่ปุ่น ไต้หวัน และไทย)
+   (ปิดอยู่โดยดีฟอลต์ — คนพลาดข้อนี้บ่อยที่สุด)
+4. **Webhook URL ถูกตั้ง + กด Verify สำเร็จ + สวิตช์ Use webhook = ON** ใน Messaging API channel
+5. **Beacon สังกัด OA ตัวเดียวกับ channel ที่ตั้ง webhook** อุปกรณ์เปิดอยู่จริง อยู่ในระยะ
+   และอยู่ในประเทศที่รองรับ (JP/TW/TH)
 
-การตรวจว่า event มาถึงจริงหรือไม่: ดู **log ของ webhook endpoint** หรือตารางที่
-persist event ดิบ (ใน repo นี้คือตาราง `beacon_logs`) — ถ้าไม่มีแถวเลยแปลว่าปัญหา
-อยู่ข้อ 1–5 ไม่ใช่โค้ดประมวลผล
+การตรวจว่า event มาถึงจริง: ดู log ของ webhook endpoint หรือตารางที่ persist event ดิบ —
+ถ้าไม่มีเลย = ปัญหาอยู่ข้อ 1–5 ไม่ใช่โค้ดประมวลผล
 
-## 3. สถาปัตยกรรม LINE ที่ต้องตั้งค่าก่อน
+## 4. อุปกรณ์ 2 แบบ — เลือกให้ถูกงาน
+
+| | **LINE Simple Beacon** (DIY) | **LINE Beacon** (อุปกรณ์ certified) |
+|---|---|---|
+| เหมาะกับ | ต้นแบบ/งานภายใน/นวัตกรรม — ESP32, micro:bit, obniz, Node.js BLE | งาน production ที่ต้องการความน่าเชื่อถือ |
+| ได้ HW ID จาก | LINE Developers Console (ออกเองได้) | ติดต่อ LY Corporation (บริษัทแม่ของ LINE) ขอออกให้ |
+| สเปกเฟรม | เปิดเผยที่ [github.com/line/line-simple-beacon](https://github.com/line/line-simple-beacon) (BLE advertising, HWID hex 10 ตัว = 5 bytes) | BLE 4.0 + iBeacon + secure message (SHA-256/XOR หมุนทุก ~15 วินาที กัน replay); แนะนำ interval 152.5ms |
+| ความปลอดภัย | **ปลอมและอ้าง HW ID กันได้** (ไม่มีกลไกพิสูจน์ตัวจริง) | มี message auth จากอุปกรณ์ certified |
+| ข้อควรระวัง | ตามคำเตือนทางการ: **อย่าใช้การเจอ beacon เป็นหลักฐานระดับความปลอดภัยสูง** (เช่น ยืนยันธุรกรรม) — ใช้เป็น trigger/ความสะดวกเท่านั้น | ราคา/ขั้นตอนจัดหาสูงกว่า |
+
+ตัวอย่างการทำ DIY: [linedevth/LINE-Simple-Beacon-ESP32](https://github.com/linedevth/LINE-Simple-Beacon-ESP32),
+[taichunmin/line-simplebeacon-esp32](https://github.com/taichunmin/line-simplebeacon-esp32)
+
+## 5. สถาปัตยกรรม LINE ที่ต้องตั้งค่าก่อน
 
 ```text
-Provider (บริษัท/ทีม)
- ├── Messaging API channel   ← webhook เข้า, ส่งข้อความ reply/push
- |    ├── Channel secret            (ใช้ verify signature)
- |    ├── Channel access token      (ใช้เรียก reply/push API)
+Provider (บริษัท/ทีม — ควรรวมทุกอย่างไว้ที่นี่)
+ ├── Messaging API channel   ← webhook เข้า, ส่งข้อความ
+ |    ├── Channel secret            (verify signature)
+ |    ├── Channel access token      (เรียก message API)
  |    └── Webhook URL + Use webhook
  ├── LINE Login channel      ← LIFF + ID token
- |    ├── Channel ID                (ใช้เป็น audience ตอน verify ID token)
+ |    ├── Channel ID                (audience ตอน verify ID token)
  |    └── LIFF app (endpoint URL, scope: openid profile)
- └── Beacon ทั้งหมดลงทะเบียนสังกัด OA ของ Messaging API channel
+ └── Beacon ทุกตัวลงทะเบียนสังกัด OA ของ Messaging API channel
 ```
 
-- ทั้งสอง channel ควรอยู่ **Provider เดียวกัน** และอย่าปน credential ระหว่างหลาย
-  โปรเจกต์ — สับสน secret/token/LIFF id ข้ามโปรเจกต์เป็นบั๊กที่เจอซ้ำ ๆ
-- ใน dev ที่ต้องการ HTTPS public URL ใช้ tunnel (เช่น cloudflared) — ระวัง URL
-  เปลี่ยนทุกครั้งที่รันใหม่ (quick tunnel) ต้องมาอัพเดต webhook URL/LIFF endpoint ใหม่
-  และ dev server บางตัวบล็อก host ที่ไม่ใช่ localhost (เช่น Vite ต้องเพิ่ม
-  `server.allowedHosts`)
+- อย่าปน credential ระหว่างหลายโปรเจกต์ — สับสน secret/token/LIFF id ข้ามโปรเจกต์เป็นบั๊กซ้ำ ๆ
+- Dev ที่ต้องการ HTTPS public: tunnel (เช่น cloudflared) — quick tunnel เปลี่ยน URL ทุกครั้ง
+ ที่รัน ต้องอัพเดต webhook/LIFF ใหม่; dev server บางตัวบล็อก host นอก localhost
+  (Vite → `server.allowedHosts`)
 
-## 4. ข้อความ LINE — reply ก่อน push เสมอ
+## 6. Webhook + ส่งข้อความ — กฎที่ต้องยึด
 
-| | replyMessage | pushMessage |
-|---|---|---|
-| เงื่อนไข | ต้องมี `replyToken` ที่ยังไม่ถูกใช้ (< ~1 นาที) | ไม่ต้องมี แต่ผู้รับต้องเป็นเพื่อนของ bot |
-| โควตา | ฟรี ไม่นับโควตา | นับโควตาของ channel |
-| ล้มเหลวเมื่อ | token หมดอายุ/ใช้ไปแล้ว (400) | ผู้รับไม่ได้แอดเพื่อน (400), token ผิด (401) |
+**Webhook** (ละเอียดทั้ง payload จริง + โค้ด: `references/webhook-signature.md`):
+1. ตรวจ `x-line-signature` (= `base64(HMAC-SHA256(channelSecret, rawBody))`) **ก่อนอ่านอะไร**
+2. **ตอบ 200 ให้เร็ว** — ตอบไม่ดี LINE จะ retry ด้วย `webhookEventId` เดิม
+3. **Idempotent ด้วย `webhookEventId`** — persist event ดิบ (UNIQUE) ก่อนตอบ 200 แล้วค่อย
+   ประมวลผลเบื้องหลัง; duplicate = ข้าม
+4. ใช้ `timestamp` ของ event เป็นเวลาเหตุการณ์ ไม่ใช่เวลาที่ server ได้รับ
+5. เก็บ processing status ต่อ event เสมอ (PROCESSED/DUPLICATE/.../ERROR) เพื่อตรวจย้อนหลัง
 
-รูปแบบที่ใช้ได้ทั้งสอง channel — plain text:
-
-```json
-{ "type": "text", "text": "✅ เช็คชื่อสำเร็จ\nกิจกรรม: อบรม Nuxt\nเวลา: 22:06 น." }
-```
-
-แนวทางที่ควรยึด:
-- **ตอบกลับด้วย reply ก่อน** (ฟรีและเร็ว) แล้วค่อย fallback เป็น push เมื่อ reply ล้มเหลว
-- **บันทึกผลการส่งทุกครั้ง** ลงตาราง (ใน repo นี้คือตาราง `notifications`: type, status
-  PENDING/SENT/FAILED, message, error_message) เพื่อใช้ดีบั๊กและทำ cooldown
-- **การส่งข้อความล้มเหลวต้องไม่กระทบข้อมูลหลัก** — สร้างข้อมูลธุรกิจ (เช่น attendance)
-  สำเร็จก่อน แล้วค่อยส่งแจ้งเตือนแบบ fire-safe (try/catch ทั้งกระบวนการส่ง)
-- **กันสแปมด้วย cooldown** — ถ้า beacon ยิง event ซ้ำต่อเนื่อง อย่าส่งข้อความเดิมซ้ำ:
-  เช็คว่ามีแถว `status='SENT'` ของ type+ผู้ใช้+กิจกรรมนั้นภายในหน้าต่างเวลา (เช่น 10 นาที)
-  ก่อนส่ง — ทำได้ด้วย query ตาราง notifications ไม่ต้องมี Redis
-- **ข้อความตอนเช็คซ้ำควรเป็นข้อความคนละแบบจาก success** (เช่น "คุณเช็คชื่อไปแล้ว")
-  เพราะการส่ง success message ซ้ำคือสแปมโดยตรง
-
-## 5. กฎเหล็กของ webhook endpoint
-
-1. **ตรวจ signature ก่อนทำอย่างอื่นเสมอ** — header `x-line-signature` คือ
-   `base64(HMAC-SHA256(channelSecret, rawBody))`; ใช้ raw body จริง ๆ (ไม่ใช่
-   JSON ที่ re-serialize แล้ว) เทียบไม่ตรง → ตอบ 401 ทันที ไม่บันทึกอะไรทั้งสิ้น
-2. **ตอบ 200 เร็วที่สุด** — LINE มี timeout สั้น ๆ; ถ้าตอบ non-200 หรือหมดเวลา LINE
-   จะ **retry ด้วย `webhookEventId` เดิม** ทำให้ได้ event ซ้ำ
-3. **Idempotent ด้วย `webhookEventId`** — persist event ดิบพร้อม UNIQUE constraint
-   บน `webhookEventId` **ก่อน** ตอบ 200 แล้วค่อยประมวลผลจริงแบบ background; duplicate
-   key = retry จาก LINE = ข้ามได้เลย
-4. **ห้ามไว้ใจข้อมูลที่ client ส่งมาเอง** — user id ต้องอ่านจาก `source.userId` ใน
-   event ที่ผ่าน signature แล้วเท่านั้น; สำหรับ LIFF ให้ verify ID token (§6) ไม่ใช่
-   เชื่อ `userId` ที่หน้าเว็บส่งมา
-5. **ประมวลผลทุก event แบบมีผลลัพธ์ชัดเจน** — เก็บ processing status ต่อ event
-   (เช่น PROCESSED / DUPLICATE / UNKNOWN_USER / NO_ACTIVE_ACTIVITY / ERROR) ไว้
-   ตรวจสอบย้อนหลัง
-
-ตัวอย่าง payload จริง, โค้ด verify signature และรูปแบบการ persist: อ่าน
-`references/webhook-signature.md` เมื่อต้องเขียน/แก้ webhook endpoint
-
-## 6. LIFF + LINE Login (ฝั่งนักศึกษา/ผู้ใช้ทั่วไป)
-
-- **LIFF** = เว็บแอปที่เปิดใน browser ในแอป LINE (หรือ external browser) — เรียก
-  `liff.init({ liffId })` แล้วใช้ `liff.getIDToken()` ได้เมื่อ logged in
-- ส่ง ID token เป็น `Authorization: Bearer <idToken>` ให้ backend แล้ว **backend เป็น
-  คน verify กับ JWKS ของ LINE** — issuer `https://access.line.org`, **audience =
-  Channel ID ของ LINE Login channel** (ไม่ใช่ LIFF id), อัลกอริทึม ES256; เคลม
-  `sub` คือ lineUserId ที่เชื่อถือได้
-- External browser ที่ยังไม่ logged in → `liff.login({ redirectUri: window.location.href })`
-  จะพาไป LINE Login แล้วกลับมาหน้าเดิม (ต้องลงทะเบียน Callback URL ให้ตรง)
-- LIFF id อยู่ใน runtime config ฝั่งเว็บ (เช่น `NUXT_PUBLIC_LIFF_ID`) — ค่าว่าง = หน้า
-  ควรมี state "ยังไม่ได้ตั้งค่า" แทนการ crash
-
-โค้ด verify ID token และรายละเอียด config: อ่าน `references/liff-line-login.md`
-เมื่อแตะ LIFF, LINE Login หรือการยืนยันตัวตนฝั่งผู้ใช้
-
-## 7. ทดสอบโดยไม่ต้องมีอุปกรณ์ beacon จริง
-
-จำลอง webhook ที่ LINE จะส่งมา (สูตรที่ใช้ได้จริง — ลงนามเองด้วย channel secret):
+**ส่งข้อความ** — reply ก่อน push เสมอ:
 
 ```bash
-# 1) สร้าง body (เขียนด้วย node กันปัญหา encoding/ภาษาไทยบน Windows shell)
+# reply: ฟรี + ทันที แต่ต้องมี replyToken ที่ยังไม่ถูกใช้ (~1 นาที)
+curl -X POST https://api.line.me/v2/bot/message/reply \
+  -H "Authorization: Bearer $CHANNEL_ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"replyToken":"<จาก event>","messages":[{"type":"text","text":"สวัสดี!"}]}'
+
+# push: ส่งเองเมื่อไรก็ได้ (นับโควตา; ผู้รับต้องเป็นเพื่อน bot ไม่งั้นได้ 400)
+curl -X POST https://api.line.me/v2/bot/message/push \
+  -H "Authorization: Bearer $CHANNEL_ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"to":"U1234...","messages":[{"type":"text","text":"มีอะไรใหม่บ้าง"}]}'
+# multicast = {"to":["U1..","U2.."],...}   broadcast = {"messages":[...]} (ทุกเพื่อน)
+```
+
+แนวปฏิบัติ:
+- **บันทึกผลการส่งทุกครั้ง** (ตาราง notifications: type/status/message/error) และ
+  **การส่งล้มเหลวต้องไม่กระทบข้อมูลหลัก**หรือ response ของ webhook
+- **กันสแปมด้วย cooldown** — beacon ยิง event รัว ๆ; ก่อนส่ง type ใดเช็คแถว SENT ล่าสุด
+  ของ type+ผู้ใช้+บริบทภายในหน้าต่างเวลา (เช่น 10 นาที) — ทำได้ด้วย DB ไม่ต้องมี Redis
+- ข้อความ "กรณีซ้ำ" ควรเป็นคนละแบบจากข้อความสำเร็จ (เช่น "คุณทำรายการนี้แล้ว") ไม่ใช่
+  ส่งข้อความเดิมซ้ำ
+- ข้อความเป็น plain text JSON (`{"type":"text","text":...}`) — Flex/sticker/image มีให้
+  ใช้เพิ่มเติมได้ตาม Messaging API reference
+
+## 7. LIFF + LINE Login (เมื่อต้องมีหน้าเว็บหรือการยืนยันตัวตน)
+
+- **LIFF** = เว็บแอปใน browser ของ LINE: `liff.init({ liffId })` → `liff.getIDToken()` →
+  ส่งเป็น `Authorization: Bearer <idToken>` ให้ backend แล้ว backend **verify กับ JWKS ของ
+  LINE** (issuer `https://access.line.org`, audience = **Channel ID** ของ LINE Login channel,
+  ES256) — เคลม `sub` คือ lineUserId ที่เชื่อถือได้; ห้ามเชื่อ userId ที่ client ส่งมาเอง
+- รายละเอียดโค้ด + การตั้งค่า console (Endpoint/Callback URL): `references/liff-line-login.md`
+- ใช้ LIFF เมื่อ: ต้องฟอร์ม/เนื้อหามากกว่าข้อความแชท, ต้องผูกบัญชี LINE กับข้อมูลผู้ใช้ของเรา,
+  หรือต้องหน้าเว็บเฉพาะจุด (ไกด์/คูปอง/สแตม)
+
+## 8. ทดสอบโดยไม่ต้องมีอุปกรณ์ beacon จริง
+
+```bash
+# 1) สร้าง body (เขียนด้วย node กันปัญหา encoding บน Windows shell)
 node -e "const now=Date.now();require('fs').writeFileSync('wh.json',JSON.stringify({
   destination:'Uffffffffffffffffffffffffffffffff',
   events:[{type:'beacon',replyToken:'sim-invalid',source:{type:'user',userId:'U1234...'},
   timestamp:now,webhookEventId:'sim-'+now,beacon:{type:'enter',hwid:'00000ac5bb',dm:''}}]}))"
 
-# 2) คำนวณ signature และยิงเข้า endpoint ของตัวเอง
+# 2) ลงนามเองด้วย channel secret แล้วยิงเข้า endpoint ของตัวเอง
 SIG=$(openssl dgst -sha256 -hmac "$CHANNEL_SECRET" -binary wh.json | base64)
-curl -X POST https://<host>/api/v1/line/webhook \
+curl -X POST https://<host>/<webhook path> \
   -H 'Content-Type: application/json' -H "x-line-signature: $SIG" \
   --data-binary @wh.json
 ```
 
-- ทดสอบ idempotency: ยิงซ้ำด้วย `webhookEventId` เดิม → ต้องถูกข้าม ไม่ประมวลผลซ้ำ
-- ทดสอบ signature ผิด (แก้ body หลัง hash หรือใช้ secret ผิด) → ต้องได้ 401
-- ใน unit/integration test: mock ตัว LINE client (reply/push) ที่ระดับ DI แล้ว assert
-  ข้อความ + แถว notifications; mock `@line/liff` ใน frontend test
-- ยิง event ซ้ำสองลูก (webhookEventId ต่างกัน) เพื่อทดสอบเส้นทาง duplicate + cooldown
+- ทดสอบ idempotency (ยิงซ้ำ `webhookEventId` เดิม), signature ผิด (ต้อง 401), event ซ้ำ
+  สองลูก id ต่างกัน (ทาง duplicate + cooldown), reply ล้ม → push fallback
+- ใน unit test: mock ตัว LINE client (reply/push) ที่ระดับ DI; frontend mock `@line/liff`
 
-## 8. ตารางอาการ → สาเหตุ → วิธีเช็ค
+## 9. ตารางอาการ → สาเหตุ → วิธีเช็ค
 
 | อาการ | สาเหตุที่พบบ่อย | วิธีเช็ค |
 |---|---|---|
-| ไม่มี webhook เข้าเลย | ข้อ 1–5 ใน §2 | ดูว่ามี request ถึง endpoint ไหม / กด Verify ใน console / ตาราง event ดิบ |
-| Verify ผ่านแต่ไม่มี event จริง | ไม่ได้แอดเพื่อน หรือไม่เปิด Use LINE Beacon | แอด OA แล้วเดินเข้าระยะใหม่ |
-| push ตอบ 400 | ผู้รับไม่ได้แอด bot เป็นเพื่อน (หรือ userId ไม่ได้มาจาก bot นี้) | ลอง reply แทน / เช็คว่าเป็นเพื่อนแล้ว |
-| push/reply ตอบ 401 | channel access token ผิด/หมดอายุ หรือปนจากโปรเจกต์อื่น | สร้าง token ใหม่จาก channel ที่ถูกต้อง |
-| signature ไม่ผ่านตลอด | channel secret ผิด channel, หรือ hash ไม่ได้อยู่บน raw body เดียวกับที่ส่ง | hash กับส่งต้องใช้ไฟล์/บัฟเฟอร์เดียวกัน |
-| ได้ event เดิมซ้ำ ๆ | ตอบ non-200 ทำให้ LINE retry | ตอบ 200 หลัง persist + idempotent ด้วย webhookEventId |
-| ผู้ใช้ได้ข้อความรัว ๆ | ไม่มี cooldown | เพิ่ม cooldown ตาม §4 |
-| แจ้งเตือนไม่หน้าเว็บ/ข้อมูลหลักพังตาม | ปล่อยให้ notification failure ไป rollback | แยกการส่งออกจากธุรกรรมหลัก (§4) |
+| ไม่มี webhook เข้าเลย | ข้อ 1–5 ใน §3 | มี request ถึง endpoint ไหม / กด Verify / ดูตาราง event ดิบ |
+| Verify ผ่านแต่ไม่มี event จริง | ไม่ได้แอดเพื่อน หรือไม่เปิด Use LINE Beacon | แอด OA แล้วเข้าระยะใหม่ |
+| push ตอบ 400 | ผู้รับไม่ได้แอด bot เป็นเพื่อน (หรือ userId ไม่ใช่ของ bot นี้) | ลอง reply แทน / เช็คสถานะเพื่อน |
+| push/reply ตอบ 401 | token ผิด channel/หมดอายุ/ปนโปรเจกต์อื่น | ออก token ใหม่จาก channel ที่ถูก |
+| signature ไม่ผ่านตลอด | secret ผิด channel หรือ hash ไม่ได้อยู่บน raw body เดียวกับที่ส่ง | hash กับส่งต้องใช้ bytes เดียวกัน |
+| ได้ event เดิมซ้ำ ๆ | ตอบ non-200 ทำให้ LINE retry | ตอบ 200 หลัง persist + idempotent |
+| ผู้ใช้ได้ข้อความรัว ๆ | ไม่มี cooldown | เพิ่ม cooldown ตาม §6 |
+| ข้อมูลหลักพังตามการส่งข้อความ | ปล่อยให้ notification failure rollback | แยกการส่งออกจากธุรกรรมหลัก |
 
-## 9. แผนที่โค้ดใน repo นี้ (LINE Beacon Attendance)
+## 10. ถ้าทำงานใน repo นี้ (LINE Beacon Attendance)
 
-เมื่อทำงานกับ repo นี้ ให้ยึด pattern ที่มีอยู่ อย่าประดิษฐ์ใหม่:
+โปรเจกต์นี้ใช้ LINE Beacon ทำระบบเช็คชื่อนักศึกษา — แผนที่โค้ด ไฟล์เอกสาร และ env vars
+ที่เกี่ยวข้อง อยู่ที่ `references/project-line-beacon-attendance.md` (ยึด pattern ของ
+repo อย่าประดิษฐ์ใหม่; งาน UI ฝั่งเว็บใช้คู่กับ skill `web-ui-coding-standards`)
 
-- `apps/api/src/modules/line/line-webhook.controller.ts` + `line-webhook.service.ts` —
-  pipeline: verify signature → persist (UNIQUE webhook_event_id) → ตอบ 200 → ประมวลผล async
-- `beacon-event.service.ts` — engine ตัดสินผลต่อ event (attendance, DUPLICATE,
-  ALREADY_CHECKED_IN, ฯลฯ)
-- `line-notification.service.ts` — reply ก่อน push, บันทึกตาราง notifications, cooldown
-- `line-token.service.ts` — verify LINE ID token กับ JWKS
-- `me.controller.ts` + `line-link.service.ts` — endpoint ฝั่งผู้ใช้ (`/me*`) ด้วย Bearer ID token
-- `apps/web/app/composables/useLiff.ts` / `useLiffSession.ts` / `useLiffApi.ts` และ
-  `pages/liff/*` — ฝั่ง LIFF (ดู skill `web-ui-coding-standards` สำหรับงาน UI)
-- `docs/line-beacon-attendance-project-spec.md` (สเปกต้นทาง) และ
-  `docs/system-design-tech-stack.md` (สถาปัตยกรรม + decision log)
-- Env ที่เกี่ยวข้อง: `LINE_CHANNEL_SECRET` / `LINE_CHANNEL_ACCESS_TOKEN` (Messaging),
-  `LINE_LOGIN_CHANNEL_ID` / `LINE_LOGIN_CHANNEL_SECRET` (Login), `LIFF_ID` /
-  `NUXT_PUBLIC_LIFF_ID` — ห้าม commit จริง
-
-## 10. สิ่งที่ควรบอกผู้ใช้เสมอ
-
-- ระบบเช็คชื่อผ่าน beacon ได้ **ต่อเมื่อผู้ใช้แอด OA เป็นเพื่อนและเปิด Use LINE Beacon**
-  แล้วเท่านั้น — ใส่ข้อความชวนแอดเพื่อนไว้ใน onboarding ของแอป
-- ทุกการเปลี่ยน webhook endpoint (เช่น tunnel URL ใหม่) ต้องอัพเดตใน LINE Console
-  และกด Verify ยืนยันด้วยทุกครั้ง
-- อย่า hard delete ข้อมูลธุรกิจเพื่อ "แก้ปัญหา event ซ้ำ" — ใช้ idempotency/cooldown
-  จัดการที่ต้นเหตุแทน
+**แหล่งอ้างอิงหลัก**: [LINE Beacon device spec](https://developers.line.biz/en/docs/messaging-api/beacon-device-spec/)
+· [Using beacons with LINE](https://developers.line.biz/en/docs/messaging-api/using-beacons/)
+· [Messaging API reference](https://developers.line.biz/en/reference/messaging-api/)
+· [line-simple-beacon (GitHub)](https://github.com/line/line-simple-beacon)
