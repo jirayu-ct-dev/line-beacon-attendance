@@ -217,6 +217,13 @@ const onUnlinkBeacon = async (beacon: Beacon): Promise<void> => {
             @click="onCancelActivity"
           />
           <UButton
+            icon="lucide:clipboard-check"
+            color="neutral"
+            variant="outline"
+            label="การเช็คชื่อ"
+            :to="`/activities/${activity.id}/attendance`"
+          />
+          <UButton
             icon="lucide:pencil"
             color="neutral"
             variant="outline"
@@ -276,6 +283,35 @@ const onUnlinkBeacon = async (beacon: Beacon): Promise<void> => {
             <dd class="text-sm font-medium text-highlighted">{{ row.value }}</dd>
           </div>
         </dl>
+      </UCard>
+
+      <UCard>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-base font-semibold text-highlighted">สรุปการเช็คชื่อ</h2>
+          <UButton
+            icon="lucide:clipboard-check"
+            color="neutral"
+            variant="outline"
+            label="ดูรายการเช็คชื่อ / เช็คชื่อแทน"
+            :to="`/activities/${activity.id}/attendance`"
+          />
+        </div>
+        <div class="mt-4 grid gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <div
+            v-for="stat in [
+              { label: 'นักศึกษา (ACTIVE)', value: activity.attendanceSummary.totalStudents },
+              { label: 'เข้าร่วม', value: activity.attendanceSummary.present },
+              { label: 'มาสาย', value: activity.attendanceSummary.late },
+              { label: 'ลา', value: activity.attendanceSummary.excused },
+              { label: 'ขาด (คำนวณ)', value: activity.attendanceSummary.absent },
+            ]"
+            :key="stat.label"
+            class="flex flex-col gap-1"
+          >
+            <span class="text-sm text-muted">{{ stat.label }}</span>
+            <span class="text-2xl font-semibold text-highlighted">{{ stat.value }}</span>
+          </div>
+        </div>
       </UCard>
 
       <UCard>

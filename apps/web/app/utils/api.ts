@@ -121,9 +121,88 @@ export interface Activity {
   updatedAt: string
 }
 
-/** Activity detail — adds the linked beacons (apps/api ActivityDetailDto). */
+/** Attendance summary on the activity detail (spec §24/§44 — absent computed). */
+export interface AttendanceSummary {
+  totalStudents: number
+  present: number
+  late: number
+  excused: number
+  absent: number
+}
+
+/** Activity detail — adds the linked beacons and §24 summary (apps/api ActivityDetailDto). */
 export interface ActivityDetail extends Activity {
   beacons: Beacon[]
+  attendanceSummary: AttendanceSummary
+}
+
+/** Attendance row on GET /activities/:id/attendances (apps/api AttendanceRowDto, spec §25). */
+export interface AttendanceRow {
+  id: string
+  student: { id: string; studentCode: string; name: string }
+  checkInAt: string
+  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'
+  checkinMethod: 'BEACON' | 'MANUAL'
+  beacon: { id: string; name: string; hwid: string } | null
+  checkedInBy: { id: string; username: string } | null
+  manualReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** Row on GET /students/:id/attendances (apps/api StudentAttendanceRowDto). */
+export interface StudentAttendanceRow {
+  id: string
+  activityId: string
+  activityName: string
+  checkInAt: string
+  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'
+  checkinMethod: 'BEACON' | 'MANUAL'
+  beacon: { id: string; name: string; hwid: string } | null
+  checkedInBy: { id: string; username: string } | null
+  manualReason: string | null
+}
+
+/** GET /dashboard payload (spec §23, §45). */
+export interface DashboardStats {
+  today: { activities: number; checkins: number; present: number; late: number }
+  totalActivities: number
+  recentActivities: { id: string; name: string; startAt: string; status: string; timeState: ActivityTimeState }[]
+  openCheckinActivities: {
+    id: string
+    name: string
+    checkinOpenAt: string
+    lateAt: string
+    checkinCloseAt: string
+    present: number
+    late: number
+  }[]
+}
+
+/** User row on the organizers page (apps/api UserResponseDto, spec §28). */
+export interface UserRow {
+  id: string
+  email: string
+  username: string
+  role: 'ADMIN' | 'ORGANIZER'
+  status: 'ACTIVE' | 'INACTIVE'
+  createdAt: string
+  updatedAt: string
+}
+
+/** Audit-log row (apps/api AuditLogResponseDto, spec §56). */
+export interface AuditLog {
+  id: string
+  user: { id: string; username: string } | null
+  action: string
+  entityType: string
+  entityId: string
+  createdAt: string
+}
+
+export interface AuditLogDetail extends AuditLog {
+  oldValue: unknown
+  newValue: unknown
 }
 
 /** Row validation report from POST /students/import/preview (and apply errors). */

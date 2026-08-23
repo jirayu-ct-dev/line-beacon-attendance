@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
-import type { ApiEnvelope, Student } from '~/utils/api'
+import type { ApiEnvelope, Paginated, Student, StudentAttendanceRow } from '~/utils/api'
 
 // Kept intentionally simple: profile + edit (reuses StudentFormDialog). The
 // attendance history section will be added with the activities/attendance phase.
@@ -39,6 +39,29 @@ const fetchStudent = async (): Promise<void> => {
 }
 
 onMounted(fetchStudent)
+onMounted(fetchHistory)
+
+// --- attendance history (spec §35 — admin view) -------------------------------
+
+const history = ref<StudentAttendanceRow[]>([])
+const historyLoading = ref(true)
+const historyError = ref<string | null>(null)
+
+async function fetchHistory(): Promise<void> {
+  historyLoading.value = true
+  historyError.value = null
+  try {
+    const res = await nuxtApp.$api<ApiEnvelope<Paginated<StudentAttendanceRow>>>(
+      `/students/${route.params.id}/attendances`,
+      { query: { pageSize: 100, sort: 'check_in_at', order: 'desc' } },
+    )
+    history.value = res.data.items
+  } catch (error) {
+    historyError.value = getApiErrorMessage(error, 'โหลดประวัติการเช็คชื่อไม่สำเร็จ กรุณาลองอีกครั้ง')
+  } finally {
+    historyLoading.value = false
+  }
+}
 
 const editOpen = ref(false)
 
@@ -163,7 +186,45 @@ const onUnlinkLine = async (): Promise<void> => {
         </dl>
       </UCard>
 
-      <p class="text-sm text-muted">ประวัติการเช็คชื่อของนักศึกษาจะแสดงที่นี่ในเฟสกิจกรรมและการเช็คชื่อ</p>
+      <UCard>
+        <h2 class="text-base font-semibold text-highlighted">ประวัติการเช็คชื่อ</h2>
+
+        <div v-if="historyLoading" class="mt-4" role="status" aria-label="กำลังโหลดประวัติการเช็คชื่อ">
+          <USkeleton class="h-24 w-full" />
+        </div>
+
+        <div v-else-if="historyError" class="mt-4 flex flex-col items-center gap-3 py-6 text-center">
+          <Icon name="lucide:circle-alert" class="size-8 text-error" aria-hidden="true" />
+          <p class="text-sm text-muted">{{ historyError }}</p>
+          <UButton color="neutral" variant="outline" icon="lucide:rotate-ccw" label="ลองอีกครั้ง" @click="fetchHistory" />
+        </div>
+
+        <table v-else-if="history.length > 0" class="mt-4 w-full text-sm">
+          <caption class="sr-only">ประวัติการเช็คชื่อของนักศึกษา</caption>
+          <thead>
+            <tr class="border-b border-default text-left text-muted">
+              <th scope="col" class="py-2 pr-4 font-medium">กิจกรรม</th>
+              <th scope="col" class="py-2 pr-4 font-medium">เวลาเช็คชื่อ</th>
+              <th scope="col" class="py-2 pr-4 font-medium">สถานะ</th>
+              <th scope="col" class="py-2 font-medium">ช่องทาง</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in history" :key="row.id" class="border-b border-default last:border-0">
+              <td class="py-2.5 pr-4">
+                <NuxtLink :to="`/activities/${row.activityId}`" class="font-medium text-highlighted hover:underline">
+                  {{ row.activityName }}
+                </NuxtLink>
+              </td>
+              <td class="py-2.5 pr-4">{{ formatDateTime(row.checkInAt) }}</td>
+              <td class="py-2.5 pr-4"><StatusBadge :status="row.status" /></td>
+              <td class="py-2.5">{{ row.checkinMethod === 'BEACON' ? 'Beacon' : 'เช็คชื่อแทน' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p v-else class="mt-4 text-sm text-muted">ยังไม่มีประวัติการเช็คชื่อ</p>
+      </UCard>
     </template>
 
     <StudentFormDialog v-model:open="editOpen" :student="student" @saved="fetchStudent" />
