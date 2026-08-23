@@ -194,7 +194,7 @@ Transaction ใช้เฉพาะ 2 จุดตามสเปก §64: (1) 
 |---|---|---|
 | `default` | Dashboard ทั้งหมด | Back-office: **sidebar** ซ้าย (ยุบได้บน desktop, drawer บน mobile) + header มีปุ่ม collapse, user menu เป็น dropdown ท้าย sidebar (เปิดขึ้นบน, ปิดด้วย click-outside/Escape) — ตามมาตรฐาน Layout ของโปรเจกต์ |
 | `auth` | `/login` | กลางจอ ไม่มี sidebar |
-| `liff` | `/liff/*` | Mobile-first, ไม่มี sidebar, พื้นหลังโทน LINE |
+| `liff` | `/liff/*` | Mobile-first, **sticky header bar + แถบเมนูด้านล่าง (bottom nav)** — แก้จาก "ไม่มี sidebar" เดิมเมื่อ 2026-08-23 ตามคำขอเจ้าของโปรเจกต์: เพิ่มหน้ากิจกรรม/ประวัติ/โปรไฟล์ (ดึงจาก "เฟสถัดไป" ของสเปก §21/§63 มาทำก่อน) เมนู 3 รายการตามแบบ Rich Menu ในสเปก §22 |
 
 โครง sidebar (ซ่อนเมนูที่ไม่มีสิทธิ์ — สิทธิ์จริงตรวจที่ backend เสมอ):
 
@@ -244,8 +244,11 @@ Mapping สถานะ (ใช้ text label คู่กับสีเสม�
 
 - plugin `liff.client.ts` เรียก `liff.init({ liffId })` เฉพาะ route `/liff/*` (client-only, ไม่กระทบ SSR)
 - ข้อมูลเข้า page: `liff.getIDToken()` → ส่งเป็น Bearer ไปที่ `/api/v1/line/*` และ `/api/v1/me*`
+- session กลาง `useLiffSession()` (resolve token + `GET /me` ครั้งเดียว แชร์ระหว่าง layout กับทุกหน้า) + component `LiffPageGate` รวม state ร่วม (initializing/unconfigured/error/ยังไม่ล็อกอิน) และ redirect ผู้ยังไม่ลิงก์ไป `/liff/register`
 - `/liff/register`: กรอกรหัสนักศึกษา (12 หลัก) + วันเดือนปีเกิด (8 หลัก `DDMMYYYY` ปี ค.ศ. เช่น `01012004`) → `POST /line/link` — ฟอร์มต้องระบุชัดว่าเป็นปี ค.ศ. มี help text ตัวอย่าง และแสดง inline validation ใกล้ field เมื่อรูปแบบหรือค่าไม่ตรง
-- `/liff/profile`: ข้อมูลนักศึกษา, สถานะการเชื่อม, ประวัติ attendance ของตัวเอง (`GET /me`, `GET /me/attendances`)
+- `/liff/activities` + `/liff/activities/:id`: รายการกิจกรรม PUBLISHED + รายละเอียดพร้อมสถานะเช็คชื่อของตัวเอง (`GET /me/activities` — endpoint ที่สเปก §35 จองไว้; ดึงจาก "เฟสถัดไป" มาทำก่อนตามคำขอเจ้าของโปรเจกต์ 2026-08-23)
+- `/liff/history`: ประวัติ attendance ของตัวเอง (`GET /me/attendances`) แยกออกจาก profile
+- `/liff/profile`: ข้อมูลนักศึกษา, สถานะการเชื่อม, ยกเลิกการเชื่อม (`GET /me`, `POST /line/unlink`)
 
 ### 6.6 API Client
 
