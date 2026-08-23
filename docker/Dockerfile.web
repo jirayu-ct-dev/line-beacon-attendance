@@ -1,0 +1,32 @@
+# Web image (design doc §9) — multi-stage:
+#   build  = full web dependency tree + nuxt build
+#   run    = Nitro .output only, served by node
+FROM node:24-alpine AS build
+RUN corepack enable
+# The /api proxy target (nuxt.config.ts routeRules) is resolved at build time —
+# compose overrides this to the in-network api service.
+ARG API_BASE_URL=http://localhost:4000
+ENV API_BASE_URL=$API_BASE_URL
+WORKDIR /repo
+
+# Manifests first for layer caching. nuxt prepare (web postinstall) reads
+# nuxt.config.ts + tsconfig + app config/assets, so they are copied early.
+# apps/api/package.json is copied only so the frozen lockfile resolves.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/tsconfig.json apps/web/nuxt.config.ts apps/web/
+COPY apps/web/app/app.config.ts apps/web/app/app.config.ts
+COPY apps/web/app/assets apps/web/app/assets
+
+RUN pnpm install --frozen-lockfile --filter web
+COPY apps/web apps/web
+RUN pnpm --filter web build
+
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
+COPY --from=build /repo/apps/web/.output ./.output
+# Non-root per design §9
+USER node
+EXPOSE 3000
+CMD ["node", ".output/server/index.mjs"]

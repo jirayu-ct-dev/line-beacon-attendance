@@ -1,0 +1,39 @@
+# API image (design doc §9) — multi-stage:
+#   build  = full api dependency tree + prisma generate + nest build
+#   run    = dist + prod-only node_modules (incl. the prisma CLI for migrations)
+FROM node:24-alpine AS build
+RUN corepack enable
+WORKDIR /repo
+
+# Manifests first for layer caching. prisma/ + prisma.config.ts must be there
+# before install: the api postinstall runs `prisma generate` against them.
+# apps/web/package.json is copied only so the frozen lockfile resolves.
+# DATABASE_URL is a never-used placeholder — prisma.config.ts resolves it via
+# env() at config load time even for generate, which does not connect.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/api/package.json apps/api/prisma.config.ts apps/api/
+COPY apps/api/prisma apps/api/prisma
+COPY apps/web/package.json apps/web/
+
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+RUN pnpm install --frozen-lockfile --filter api
+COPY apps/api apps/api
+RUN pnpm --filter api build
+
+# Isolated prod-only dependency tree for the runtime stage. --legacy: the apps
+# do not use injected workspace dependencies (pnpm ≥10 deploy requirement).
+RUN pnpm --filter api --prod deploy --legacy /out
+
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /out/package.json ./package.json
+COPY --from=build /out/node_modules ./node_modules
+COPY --from=build /repo/apps/api/dist ./dist
+# prisma/ + prisma.config.ts power `prisma migrate deploy` (compose "migrate" service)
+COPY --from=build /repo/apps/api/prisma ./prisma
+COPY --from=build /repo/apps/api/prisma.config.ts ./prisma.config.ts
+# Non-root per design §9
+USER node
+EXPOSE 4000
+CMD ["node", "dist/main"]
