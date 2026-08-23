@@ -32,6 +32,8 @@ describe('liff register page', () => {
   beforeEach(() => {
     // Simulate the client plugin having initialized the SDK successfully.
     liffState().value = { status: 'ready', isInClient: true, isLoggedIn: true }
+    // Fresh shared session (useLiffSession) — pages read it, they don't bootstrap.
+    useState('liff:session').value = { token: null, me: null, loading: true, error: null }
     registerEndpoint('/api/v1/me', () => ({ success: true, data: { linked: false, student: null, line: null } }))
     registerEndpoint('/api/v1/line/link', () => ({ success: true, data: { linked: true, student: null, line: null } }))
   })

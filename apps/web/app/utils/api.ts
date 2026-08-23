@@ -274,6 +274,28 @@ export interface AttendanceItem {
   checkinMethod: 'BEACON' | 'MANUAL'
 }
 
+/** The caller's own attendance on one activity (apps/api MyAttendanceDto). */
+export interface MyAttendance {
+  checkInAt: string
+  status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED'
+  checkinMethod: 'BEACON' | 'MANUAL'
+}
+
+/** One PUBLISHED activity for students on GET /me/activities (apps/api MyActivityItemDto). */
+export interface MyActivityItem {
+  id: string
+  name: string
+  description: string | null
+  location: string | null
+  startAt: string
+  endAt: string
+  checkinOpenAt: string
+  lateAt: string
+  checkinCloseAt: string
+  timeState: ActivityTimeState
+  myAttendance: MyAttendance | null
+}
+
 export interface ImportPreviewResult {
   totalRows: number
   validRows: number

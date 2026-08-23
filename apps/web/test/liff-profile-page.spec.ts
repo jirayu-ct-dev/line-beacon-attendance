@@ -47,56 +47,22 @@ const mePayload = {
 describe('liff profile page', () => {
   beforeEach(() => {
     liffState().value = { status: 'ready', isInClient: true, isLoggedIn: true }
+    // Fresh shared session (useLiffSession) — pages read it, they don't bootstrap.
+    useState('liff:session').value = { token: null, me: null, loading: true, error: null }
     registerEndpoint('/api/v1/me', () => mePayload)
   })
 
-  it('renders the student card and the empty attendance state', async () => {
-    registerEndpoint('/api/v1/me/attendances', () => ({
-      success: true,
-      data: { items: [], total: 0, page: 1, pageSize: 20 },
-    }))
+  it('renders the student profile card', async () => {
     const wrapper = await mountSuspended(LiffProfile)
     await settle()
 
+    expect(wrapper.text()).toContain('โปรไฟล์ของฉัน')
     expect(wrapper.text()).toContain('สมชาย LINE')
     expect(wrapper.text()).toContain('660112230038')
     expect(wrapper.text()).toContain('ชั้นปี 3')
-    expect(wrapper.text()).toContain('ประวัติการเช็คชื่อ')
-    expect(wrapper.text()).toContain('ยังไม่มีประวัติการเช็คชื่อ')
-  })
-
-  it('renders attendance cards with status labels', async () => {
-    registerEndpoint('/api/v1/me/attendances', () => ({
-      success: true,
-      data: {
-        items: [
-          {
-            id: 'a1',
-            activityId: 'act1',
-            activityName: 'ปฐมนิเทศน์นักศึกษาใหม่',
-            checkInAt: '2026-08-20T09:05:00.000Z',
-            status: 'PRESENT',
-            checkinMethod: 'BEACON',
-          },
-        ],
-        total: 1,
-        page: 1,
-        pageSize: 20,
-      },
-    }))
-    const wrapper = await mountSuspended(LiffProfile)
-    await settle()
-
-    expect(wrapper.text()).toContain('ปฐมนิเทศน์นักศึกษาใหม่')
-    expect(wrapper.text()).toContain('เข้าร่วม')
-    expect(wrapper.text()).not.toContain('ยังไม่มีประวัติการเช็คชื่อ')
   })
 
   it('offers the unlink action (confirm-gated per project standards)', async () => {
-    registerEndpoint('/api/v1/me/attendances', () => ({
-      success: true,
-      data: { items: [], total: 0, page: 1, pageSize: 20 },
-    }))
     const wrapper = await mountSuspended(LiffProfile)
     await settle()
 

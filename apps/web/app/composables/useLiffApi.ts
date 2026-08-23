@@ -14,6 +14,8 @@ export const useLiffApi = () => {
     options: {
       method?: 'GET' | 'POST'
       body?: Record<string, string>
+      /** Query-string params (pagination etc.), serialized by $fetch. */
+      query?: Record<string, string | number>
       /** LINE ID Token from useLiff().getIdToken(). */
       token: string
     },
@@ -23,6 +25,7 @@ export const useLiffApi = () => {
         baseURL: '/api/v1',
         method: options.method ?? 'GET',
         body: options.body,
+        query: options.query,
         headers: { Authorization: `Bearer ${options.token}` },
       })
       return res.data
