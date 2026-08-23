@@ -772,6 +772,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** PUBLISHED activities for the LIFF activities page (spec §35), newest start first */
+        get: operations["MeController_activities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/activities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One PUBLISHED activity + the caller’s own attendance (LIFF detail view) */
+        get: operations["MeController_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1414,6 +1448,55 @@ export interface components {
             status: "PRESENT" | "LATE" | "ABSENT" | "EXCUSED";
             /** @enum {string} */
             checkinMethod: "BEACON" | "MANUAL";
+        };
+        MyAttendanceDto: {
+            /**
+             * @description เวลาเช็คชื่อ (UTC) แสดงผลเป็น Asia/Bangkok
+             * @example 2026-08-22T02:00:00.000Z
+             */
+            checkInAt: string;
+            /** @enum {string} */
+            status: "PRESENT" | "LATE" | "ABSENT" | "EXCUSED";
+            /** @enum {string} */
+            checkinMethod: "BEACON" | "MANUAL";
+        };
+        MyActivityItemDto: {
+            id: string;
+            /** @example ปฐมนิเทศน์นักศึกษาใหม่ */
+            name: string;
+            /** @example กิจกรรมต้อนรับนักศึกษาใหม่ */
+            description: Record<string, never> | null;
+            /** @example ห้องประชุมใหญ่ */
+            location: Record<string, never> | null;
+            /**
+             * @description เวลาเริ่มกิจกรรม (UTC) แสดงผลเป็น Asia/Bangkok
+             * @example 2026-08-22T09:00:00.000Z
+             */
+            startAt: string;
+            /**
+             * @description เวลาสิ้นสุดกิจกรรม (UTC)
+             * @example 2026-08-22T12:00:00.000Z
+             */
+            endAt: string;
+            /**
+             * @description เวลาเปิดเช็คชื่อ (UTC)
+             * @example 2026-08-22T08:30:00.000Z
+             */
+            checkinOpenAt: string;
+            /**
+             * @description เกณฑ์มาสาย (UTC)
+             * @example 2026-08-22T09:15:00.000Z
+             */
+            lateAt: string;
+            /**
+             * @description เวลาปิดเช็คชื่อ (UTC)
+             * @example 2026-08-22T11:00:00.000Z
+             */
+            checkinCloseAt: string;
+            /** @enum {string} */
+            timeState: "UPCOMING" | "CHECKIN_OPEN" | "ONGOING" | "COMPLETED";
+            /** @description การเช็คชื่อของผู้เรียกในกิจกรรมนี้ (null = ยังไม่ได้เช็ค) */
+            myAttendance: components["schemas"]["MyAttendanceDto"] | null;
         };
     };
     responses: never;
@@ -2665,6 +2748,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendanceItemDto"][];
+                };
+            };
+        };
+    };
+    MeController_activities: {
+        parameters: {
+            query?: {
+                /** @description หมายเลขหน้า (เริ่มที่ 1) */
+                page?: number;
+                /** @description จำนวนรายการต่อหน้า */
+                pageSize?: number;
+                /** @description คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่) */
+                search?: string;
+                /** @description ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint) */
+                sort?: string;
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyActivityItemDto"][];
+                };
+            };
+        };
+    };
+    MeController_activity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyActivityItemDto"];
                 };
             };
         };

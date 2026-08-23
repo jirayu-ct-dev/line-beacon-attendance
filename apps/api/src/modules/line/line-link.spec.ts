@@ -316,6 +316,75 @@ describe('LINE link/unlink/me (integration)', () => {
     expect(resD.body.data).toEqual({ items: [], total: 0, page: 1, pageSize: 20 })
   })
 
+  // --- /me/activities (spec §35 — the endpoint reserved for the LIFF activities page) -----
+
+  it('GET /me/activities lists only PUBLISHED activities with the caller’s attendance merged; drafts/cancelled are 404', async () => {
+    const base = {
+      endAt: new Date('2026-09-20T12:00:00Z'),
+      checkinOpenAt: new Date('2026-09-20T08:30:00Z'),
+      lateAt: new Date('2026-09-20T09:15:00Z'),
+      checkinCloseAt: new Date('2026-09-20T11:00:00Z'),
+      location: 'ห้องสัมมนา',
+      createdBy: admin.id,
+    }
+    const publishedAttended = await prisma.activity.create({
+      data: { name: 'กิจกรรมทดสอบการเข้าร่วม 3', startAt: new Date('2026-09-20T10:00:00Z'), status: 'PUBLISHED', ...base },
+      select: { id: true },
+    })
+    const publishedOpen = await prisma.activity.create({
+      data: { name: 'กิจกรรมทดสอบการเข้าร่วม 4', startAt: new Date('2026-09-19T10:00:00Z'), status: 'PUBLISHED', ...base },
+      select: { id: true },
+    })
+    await prisma.activity.create({
+      data: { name: 'กิจกรรมทดสอบการเข้าร่วม 5', startAt: new Date('2026-09-18T10:00:00Z'), status: 'DRAFT', ...base },
+      select: { id: true },
+    })
+    const cancelled = await prisma.activity.create({
+      data: { name: 'กิจกรรมทดสอบการเข้าร่วม 6', startAt: new Date('2026-09-17T10:00:00Z'), status: 'CANCELLED', ...base },
+      select: { id: true },
+    })
+    await prisma.attendance.create({
+      data: {
+        activityId: publishedAttended.id,
+        studentId: studentId1,
+        checkInAt: new Date('2026-09-20T09:05:00Z'),
+        status: 'PRESENT',
+        checkinMethod: 'BEACON',
+      },
+    })
+
+    // token-a is linked to student 1 at this point in the file (unlinked later)
+    const res = await request(server()).get('/api/v1/me/activities').set(bearer('token-a'))
+    expect(res.status).toBe(200)
+    expect(res.body.data.total).toBe(2)
+    expect(res.body.data.items.map((item: { id: string }) => item.id)).toEqual([
+      publishedAttended.id, // newest startAt first
+      publishedOpen.id,
+    ])
+    expect(res.body.data.items[0]).toMatchObject({
+      id: publishedAttended.id,
+      name: 'กิจกรรมทดสอบการเข้าร่วม 3',
+      location: 'ห้องสัมมนา',
+      timeState: 'UPCOMING', // every seeded window is in the future relative to the run
+      myAttendance: { checkInAt: '2026-09-20T09:05:00.000Z', status: 'PRESENT', checkinMethod: 'BEACON' },
+    })
+    expect(res.body.data.items[1]).toMatchObject({ id: publishedOpen.id, myAttendance: null })
+
+    // Unlinked caller: same published list, attendance always null
+    const resD = await request(server()).get('/api/v1/me/activities').set(bearer('token-d'))
+    expect(resD.status).toBe(200)
+    expect(resD.body.data.total).toBe(2)
+    expect(resD.body.data.items.every((item: { myAttendance: unknown }) => item.myAttendance === null)).toBe(true)
+
+    // Detail view: published 200, cancelled hidden behind a 404
+    const detail = await request(server()).get(`/api/v1/me/activities/${publishedOpen.id}`).set(bearer('token-a'))
+    expect(detail.status).toBe(200)
+    expect(detail.body.data).toMatchObject({ id: publishedOpen.id, myAttendance: null })
+    const missing = await request(server()).get(`/api/v1/me/activities/${cancelled.id}`).set(bearer('token-a'))
+    expect(missing.status).toBe(404)
+    expect(missing.body.error.code).toBe('NOT_FOUND')
+  })
+
   it('GET /me without a Bearer token is a 401 envelope', async () => {
     const res = await request(server()).get('/api/v1/me')
     expect(res.status).toBe(401)

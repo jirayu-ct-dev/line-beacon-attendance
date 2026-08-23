@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { AttendanceStatus, CheckinMethod, StudentStatus } from '../../../generated/prisma/client'
+import { ActivityTimeState } from '../../activities/dto/activity-response.dto'
 
 /** Student profile subset shown on /liff/profile (no timestamps/audit noise). */
 export class StudentProfileDto {
@@ -37,4 +38,37 @@ export class AttendanceItemDto {
   checkInAt!: string
   @ApiProperty({ enum: AttendanceStatus }) status!: AttendanceStatus
   @ApiProperty({ enum: CheckinMethod }) checkinMethod!: CheckinMethod
+}
+
+/** The caller's own attendance on one activity, when it exists (GET /me/activities*). */
+export class MyAttendanceDto {
+  @ApiProperty({ example: '2026-08-22T02:00:00.000Z', description: 'เวลาเช็คชื่อ (UTC) แสดงผลเป็น Asia/Bangkok' })
+  checkInAt!: string
+  @ApiProperty({ enum: AttendanceStatus }) status!: AttendanceStatus
+  @ApiProperty({ enum: CheckinMethod }) checkinMethod!: CheckinMethod
+}
+
+/**
+ * One PUBLISHED activity as shown to students on the LIFF activities page
+ * (GET /me/activities — the endpoint spec §35 reserved for exactly this page).
+ * Drafts/cancelled activities are never returned.
+ */
+export class MyActivityItemDto {
+  @ApiProperty() id!: string
+  @ApiProperty({ example: 'ปฐมนิเทศน์นักศึกษาใหม่' }) name!: string
+  @ApiProperty({ nullable: true, example: 'กิจกรรมต้อนรับนักศึกษาใหม่' }) description!: string | null
+  @ApiProperty({ nullable: true, example: 'ห้องประชุมใหญ่' }) location!: string | null
+  @ApiProperty({ example: '2026-08-22T09:00:00.000Z', description: 'เวลาเริ่มกิจกรรม (UTC) แสดงผลเป็น Asia/Bangkok' })
+  startAt!: string
+  @ApiProperty({ example: '2026-08-22T12:00:00.000Z', description: 'เวลาสิ้นสุดกิจกรรม (UTC)' })
+  endAt!: string
+  @ApiProperty({ example: '2026-08-22T08:30:00.000Z', description: 'เวลาเปิดเช็คชื่อ (UTC)' })
+  checkinOpenAt!: string
+  @ApiProperty({ example: '2026-08-22T09:15:00.000Z', description: 'เกณฑ์มาสาย (UTC)' })
+  lateAt!: string
+  @ApiProperty({ example: '2026-08-22T11:00:00.000Z', description: 'เวลาปิดเช็คชื่อ (UTC)' })
+  checkinCloseAt!: string
+  @ApiProperty({ enum: ['UPCOMING', 'CHECKIN_OPEN', 'ONGOING', 'COMPLETED'] }) timeState!: ActivityTimeState
+  @ApiProperty({ nullable: true, type: MyAttendanceDto, description: 'การเช็คชื่อของผู้เรียกในกิจกรรมนี้ (null = ยังไม่ได้เช็ค)' })
+  myAttendance!: MyAttendanceDto | null
 }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Activity, BeaconLog, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
-import { checkinSuccessMessage, LINE_MESSAGES } from './line-messages'
+import { checkinSuccessMessage, alreadyCheckedInMessage, LINE_MESSAGES, NOTIFICATION_TYPES } from './line-messages'
 import { LineNotificationService } from './line-notification.service'
 
 /**
@@ -154,10 +154,12 @@ export class BeaconEventService {
     const activity = inWindow[0]
 
     // §37.9 — duplicate guard (§17). Existing attendance means a later enter
-    // burst of the same student — record DUPLICATE, never re-notify (§42).
+    // burst of the same student — record DUPLICATE, never re-send the success
+    // message (§42); the ALREADY_CHECKED_IN info message below is a different
+    // message with its own cooldown bucket.
     const existing = await this.prisma.attendance.findUnique({
       where: { activityId_studentId: { activityId: activity.id, studentId: lineAccount.studentId } },
-      select: { id: true },
+      select: { id: true, checkInAt: true },
     })
     let created = false
     if (!existing) {
@@ -196,6 +198,7 @@ export class BeaconEventService {
           this.logger.log(
             `Attendance race lost for event ${log.webhookEventId} — treating as duplicate (spec §17)`,
           )
+          await this.notifyAlreadyCheckedIn(log, lineAccount.studentId, activity)
         } else {
           throw error
         }
@@ -204,6 +207,7 @@ export class BeaconEventService {
       this.logger.log(
         `Beacon event ${log.webhookEventId}: DUPLICATE (attendance already exists, spec §17)`,
       )
+      await this.notifyAlreadyCheckedIn(log, lineAccount.studentId, activity, existing.checkInAt)
     }
 
     await this.prisma.beaconLog.update({
@@ -222,6 +226,28 @@ export class BeaconEventService {
       where: { status: 'PUBLISHED', beacons: { some: { beaconId } } },
       orderBy: { checkinOpenAt: 'asc' },
     })
+  }
+
+  /**
+   * Plain-text informational message for a duplicate enter event (§17/§55
+   * forbid a second attendance, not a reply). Reply token first, own cooldown
+   * bucket per student+activity (§42) — never the success message again.
+   */
+  private async notifyAlreadyCheckedIn(
+    log: BeaconLog,
+    studentId: string,
+    activity: Activity,
+    checkInAt?: Date,
+  ): Promise<void> {
+    const result = await this.notifications.send({
+      studentId,
+      lineUserId: log.lineUserId,
+      type: NOTIFICATION_TYPES.ALREADY_CHECKED_IN,
+      message: alreadyCheckedInMessage(activity.name, checkInAt),
+      replyToken: replyTokenOf(log),
+      activityId: activity.id,
+    })
+    this.logger.log(`Beacon event ${log.webhookEventId}: ALREADY_CHECKED_IN notification: ${result}`)
   }
 }
 

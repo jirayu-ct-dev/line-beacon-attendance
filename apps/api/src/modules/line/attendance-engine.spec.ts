@@ -5,7 +5,7 @@ import { AppModule } from '../../app.module'
 import { configureApp } from '../../app.setup'
 import { PrismaService } from '../../prisma/prisma.service'
 import { buildBeaconEvent, postEvents } from '../../test/line-webhook-helper'
-import { checkinSuccessMessage, LINE_MESSAGES } from './line-messages'
+import { alreadyCheckedInMessage, checkinSuccessMessage, LINE_MESSAGES } from './line-messages'
 import { LINE_MESSAGING_CLIENT } from './line-notification.service'
 import { LineWebhookService } from './line-webhook.service'
 
@@ -183,7 +183,7 @@ describe('Attendance engine (integration)', () => {
     expect(lineClient.replyMessage.mock.calls[0][0].messages[0].text).toContain('มาสาย')
   })
 
-  it('a second enter event (new webhookEventId) is a DUPLICATE — no extra row, no repeat message (§17, §42)', async () => {
+  it('a second enter event (new webhookEventId) is a DUPLICATE — no extra row, info message instead of silence (§17, §42)', async () => {
     await postEvents(server(), [
       event(3, { timestamp: T(8).getTime() }),
       event(4, { timestamp: T(8, 25).getTime() }),
@@ -197,7 +197,41 @@ describe('Attendance engine (integration)', () => {
       .map((log) => log?.processingStatus)
       .sort()
     expect(statuses).toEqual(['DUPLICATE', 'PROCESSED'])
-    expect(lineClient.replyMessage).toHaveBeenCalledTimes(1) // only the winning success (§42)
+    // Exactly one success message and one ALREADY_CHECKED_IN info message —
+    // never a second success (§42). Order depends on the race winner.
+    const texts = lineClient.replyMessage.mock.calls.map((call) => call[0].messages[0].text)
+    expect(texts).toHaveLength(2)
+    expect(texts).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('เช็คชื่อสำเร็จ'),
+        expect.stringContaining('คุณเช็คชื่อกิจกรรมนี้ไปแล้ว'),
+      ]),
+    )
+  })
+
+  it('a later re-enter after attendance exists → ALREADY_CHECKED_IN info message with the original time, cooldown-gated (§42)', async () => {
+    await postEvents(server(), [event(12, { timestamp: T(8).getTime() })])
+    await drain()
+    await postEvents(server(), [event(13, { timestamp: T(8, 20).getTime() })])
+    await drain()
+    // Third event within the cooldown window — suppressed, no third reply
+    await postEvents(server(), [event(14, { timestamp: T(8, 25).getTime() })])
+    await drain()
+
+    expect(await attendanceCount()).toBe(1)
+    expect(await logByWebhookId('eng-event-0013')).toMatchObject({ processingStatus: 'DUPLICATE' })
+    expect(await logByWebhookId('eng-event-0014')).toMatchObject({ processingStatus: 'DUPLICATE' })
+    const texts = lineClient.replyMessage.mock.calls.map((call) => call[0].messages[0].text)
+    expect(texts).toEqual([
+      checkinSuccessMessage(ACTIVITY_NAME, EVENT_TS, 'PRESENT'),
+      alreadyCheckedInMessage(ACTIVITY_NAME, EVENT_TS),
+    ])
+    await expect(
+      prisma.notification.findFirstOrThrow({ where: { studentId, type: 'ALREADY_CHECKED_IN' } }),
+    ).resolves.toMatchObject({ status: 'SENT', activityId })
+    expect(
+      await prisma.notification.count({ where: { studentId, type: 'ALREADY_CHECKED_IN' } }),
+    ).toBe(1)
   })
 
   // --- §16/§55 outside the window ------------------------------------------------

@@ -4,7 +4,9 @@
  *
  * Type strings intentionally match ProcessingStatus names so the cooldown
  * lookups can reuse them directly (spec §42). PRESENT/LATE are the §20
- * success/late outcomes recorded on the notifications row.
+ * success/late outcomes recorded on the notifications row. ALREADY_CHECKED_IN
+ * is the informational duplicate-attendance message — its own type, not the
+ * DUPLICATE log status, so the notifications table reads unambiguously.
  */
 export const NOTIFICATION_TYPES = {
   UNKNOWN_USER: 'UNKNOWN_USER',
@@ -12,6 +14,7 @@ export const NOTIFICATION_TYPES = {
   OUTSIDE_CHECKIN_WINDOW: 'OUTSIDE_CHECKIN_WINDOW',
   PRESENT: 'PRESENT',
   LATE: 'LATE',
+  ALREADY_CHECKED_IN: 'ALREADY_CHECKED_IN',
 } as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES]
@@ -53,5 +56,21 @@ export const checkinSuccessMessage = (
     'สถานะ:',
     status === 'PRESENT' ? 'เข้าร่วม' : 'มาสาย',
   ]
+  return lines.join('\n')
+}
+
+/**
+ * Informational message for a beacon event that arrives after the attendance
+ * already exists (spec §17/§55 forbid a second attendance, not a reply). It is
+ * deliberately a different message from checkinSuccessMessage — §42 only bans
+ * re-sending the success message — and rides its own cooldown bucket via the
+ * ALREADY_CHECKED_IN notification type. `checkInAt` (the original check-in
+ * time) is shown when known; the create-race loser has no row to read it from.
+ */
+export const alreadyCheckedInMessage = (activityName: string, checkInAt?: Date): string => {
+  const lines = ['ℹ️ คุณเช็คชื่อกิจกรรมนี้ไปแล้ว', '', 'กิจกรรม:', activityName]
+  if (checkInAt) {
+    lines.push('', 'เวลา:', `${BANGKOK_TIME.format(checkInAt)} น.`)
+  }
   return lines.join('\n')
 }

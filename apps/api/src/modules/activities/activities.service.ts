@@ -5,10 +5,11 @@ import { AuthUser } from '../../common/auth/current-user.decorator'
 import { PrismaService } from '../../prisma/prisma.service'
 import { AuditService } from '../audit/audit.service'
 import { ActivityTimes, validateActivityTimes } from './activity-validation'
+import { timeStateOf } from './activity-time-state'
 import { ListActivitiesDto, sortToPrismaField } from './dto/list-activities.dto'
 import { CreateActivityDto } from './dto/create-activity.dto'
 import { UpdateActivityDto } from './dto/update-activity.dto'
-import { ActivityDetailDto, ActivityResponseDto, ActivityTimeState, AttendanceSummaryDto } from './dto/activity-response.dto'
+import { ActivityDetailDto, ActivityResponseDto, AttendanceSummaryDto } from './dto/activity-response.dto'
 import { BeaconResponseDto } from '../beacons/dto/beacon-response.dto'
 
 const NOT_FOUND_MESSAGE = 'ไม่พบกิจกรรม'
@@ -374,14 +375,6 @@ function parseTimes(dto: CreateActivityDto): ActivityTimes {
     lateAt: new Date(dto.lateAt),
     checkinCloseAt: new Date(dto.checkinCloseAt),
   }
-}
-
-function timeStateOf(activity: Activity): ActivityTimeState {
-  const now = Date.now()
-  if (now < activity.checkinOpenAt.getTime()) return 'UPCOMING'
-  if (now <= activity.checkinCloseAt.getTime()) return 'CHECKIN_OPEN'
-  if (now <= activity.endAt.getTime()) return 'ONGOING'
-  return 'COMPLETED'
 }
 
 function toResponse(activity: ActivityWithMeta): ActivityResponseDto {

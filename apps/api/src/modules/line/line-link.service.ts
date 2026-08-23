@@ -1,12 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { Prisma } from '../../generated/prisma/client'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Activity, ActivityStatus, Prisma } from '../../generated/prisma/client'
 import { ApiError } from '../../common/http/api-error'
 import { Paginated, PaginationDto, resolvePagination } from '../../common/dto/pagination.dto'
 import { AuditService } from '../audit/audit.service'
 import { PrismaService } from '../../prisma/prisma.service'
+import { timeStateOf } from '../activities/activity-time-state'
 import { calendarDay, parseDdMmYyyy } from './line-validation'
 import { LinkLineDto } from './dto/link-line.dto'
-import { AttendanceItemDto, MeResponseDto, StudentProfileDto } from './dto/me-response.dto'
+import {
+  AttendanceItemDto,
+  MeResponseDto,
+  MyActivityItemDto,
+  StudentProfileDto,
+} from './dto/me-response.dto'
 
 /**
  * Rate limit for account-linking guesses (spec §7.1): at most 5 FAILED attempts
@@ -202,6 +208,73 @@ export class LineLinkService {
       page,
       pageSize,
     }
+  }
+
+  /**
+   * GET /me/activities: PUBLISHED activities only (spec §35 reserved this
+   * endpoint for the LIFF activities page). Unlinked callers still get the
+   * list — published activity info is not personal, `myAttendance` is null.
+   */
+  async getMyActivities(lineUserId: string, query: PaginationDto): Promise<Paginated<MyActivityItemDto>> {
+    const { page, pageSize, order } = resolvePagination(query)
+    const where = { status: ActivityStatus.PUBLISHED }
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.activity.findMany({
+        where,
+        orderBy: [{ startAt: order }],
+        take: pageSize,
+        skip: (page - 1) * pageSize,
+      }),
+      this.prisma.activity.count({ where }),
+    ])
+    return { items: await this.withMyAttendance(rows, lineUserId), total, page, pageSize }
+  }
+
+  /** GET /me/activities/:id — drafts/cancelled are invisible to students (404). */
+  async getMyActivity(lineUserId: string, id: string): Promise<MyActivityItemDto> {
+    const activity = await this.prisma.activity.findFirst({ where: { id, status: ActivityStatus.PUBLISHED } })
+    if (!activity) throw new NotFoundException('ไม่พบกิจกรรม')
+    const [item] = await this.withMyAttendance([activity], lineUserId)
+    return item
+  }
+
+  /** Maps activities to the student DTO, attaching the caller's own attendance per activity. */
+  private async withMyAttendance(activities: Activity[], lineUserId: string): Promise<MyActivityItemDto[]> {
+    if (activities.length === 0) return []
+    const account = await this.prisma.lineAccount.findUnique({
+      where: { lineUserId },
+      select: { studentId: true },
+    })
+    const mine = account
+      ? await this.prisma.attendance.findMany({
+          where: { studentId: account.studentId, activityId: { in: activities.map((a) => a.id) } },
+          select: { activityId: true, checkInAt: true, status: true, checkinMethod: true },
+        })
+      : []
+    const mineByActivity = new Map(mine.map((row) => [row.activityId, row]))
+
+    return activities.map((activity) => {
+      const mine = mineByActivity.get(activity.id)
+      return {
+        id: activity.id,
+        name: activity.name,
+        description: activity.description,
+        location: activity.location,
+        startAt: activity.startAt.toISOString(),
+        endAt: activity.endAt.toISOString(),
+        checkinOpenAt: activity.checkinOpenAt.toISOString(),
+        lateAt: activity.lateAt.toISOString(),
+        checkinCloseAt: activity.checkinCloseAt.toISOString(),
+        timeState: timeStateOf(activity),
+        myAttendance: mine
+          ? {
+              checkInAt: mine.checkInAt.toISOString(),
+              status: mine.status,
+              checkinMethod: mine.checkinMethod,
+            }
+          : null,
+      }
+    })
   }
 
   /** Race-safe create: a concurrent link could win one of the UNIQUE constraints first. */
