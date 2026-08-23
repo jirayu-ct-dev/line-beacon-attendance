@@ -6,14 +6,20 @@
  * A hard reload of a protected page therefore lands an authenticated user on
  * /login via the SSR redirect first — recover here by sending them back to
  * their intended page once the client knows who they are.
+ *
+ * The recovery must run after hydration (onNuxtReady): resolving the user and
+ * navigating away from the SSR-rendered /login any earlier renders the
+ * dashboard shell against the login page's DOM — a hydration mismatch.
  */
-export default defineNuxtPlugin(async () => {
-  const { user, fetchUser } = useAuth()
-  if (!user.value) {
-    await fetchUser()
-  }
-  const route = useRoute()
-  if (user.value && route.path === '/login') {
-    await navigateTo(resolveSafeRedirect(route.query.redirect), { replace: true })
-  }
+export default defineNuxtPlugin(() => {
+  onNuxtReady(async () => {
+    const { user, fetchUser } = useAuth()
+    if (!user.value) {
+      await fetchUser()
+    }
+    const route = useRoute()
+    if (user.value && route.path === '/login') {
+      await navigateTo(resolveSafeRedirect(route.query.redirect), { replace: true })
+    }
+  })
 })
