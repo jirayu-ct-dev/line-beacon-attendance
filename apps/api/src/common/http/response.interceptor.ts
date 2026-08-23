@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor, StreamableFile } from '@nestjs/common'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 
@@ -10,11 +10,14 @@ import { map } from 'rxjs/operators'
  * `undefined` payloads become `null` so the envelope is always well-formed JSON.
  * Endpoints that return lists can later nest pagination inside `data`
  * (e.g. { items, total, page, pageSize }) — the envelope itself stays stable.
+ * Binary downloads (StreamableFile) pass through untouched — Nest streams them.
  */
 @Injectable()
-export class ResponseInterceptor<T> implements NestInterceptor<T, Envelope<T>> {
-  intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<Envelope<T>> {
-    return next.handle().pipe(map((data) => ({ success: true, data: data === undefined ? null : data })))
+export class ResponseInterceptor<T> implements NestInterceptor<T, Envelope<T> | StreamableFile> {
+  intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<Envelope<T> | StreamableFile> {
+    return next.handle().pipe(
+      map((data) => (data instanceof StreamableFile ? data : { success: true, data: data === undefined ? null : data })),
+    )
   }
 }
 
