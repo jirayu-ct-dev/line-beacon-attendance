@@ -8,7 +8,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-line_beacon_attendance}
     ports:
-      - '5432:5432'
+      # Host port 5433 (not 5432): machines with a natively installed PostgreSQL
+      # already have 5432 occupied — connections would silently hit that server.
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
