@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
 import type { TableColumn } from '@nuxt/ui'
-import type { ApiEnvelope, BeaconLog, BeaconLogDetail, Paginated } from '~/utils/api'
+import type { ActivityDetail, ApiEnvelope, BeaconLog, BeaconLogDetail, Paginated } from '~/utils/api'
 
 // Admin-only beacon-log viewer (spec §18, §26) for debugging and audit.
 definePageMeta({ middleware: 'auth' })
@@ -12,11 +12,31 @@ const hwidId = useId()
 const fromId = useId()
 const toId = useId()
 
+// activityId is URL-driven only (spec §24 "View Beacon Logs เฉพาะ Activity"):
+// the activity detail page links here with ?activityId=…, so it rides the
+// table state instead of having its own input control.
 const table = useDataTable({
-  filters: { status: '', hwid: '', from: '', to: '' },
+  filters: { status: '', hwid: '', from: '', to: '', activityId: '' },
   defaultSort: 'created_at',
   defaultOrder: 'desc',
 })
+
+// Resolve the activity name for the filter banner (falls back to the raw id).
+const activityName = ref<string | null>(null)
+watch(
+  () => table.filters.activityId,
+  async (id) => {
+    activityName.value = null
+    if (!id) return
+    try {
+      const res = await nuxtApp.$api<ApiEnvelope<ActivityDetail>>(`/activities/${id}`)
+      activityName.value = res.data.name
+    } catch {
+      activityName.value = null
+    }
+  },
+  { immediate: true },
+)
 
 const items = ref<BeaconLog[]>([])
 const total = ref(0)
@@ -177,6 +197,25 @@ const rawPayloadText = computed(() =>
     </UCard>
 
     <template v-else>
+      <div
+        v-if="table.filters.activityId"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-default bg-elevated px-4 py-3"
+      >
+        <p class="flex items-center gap-2 text-sm text-highlighted">
+          <Icon name="lucide:radar" class="size-4 text-muted" aria-hidden="true" />
+          กรองตามกิจกรรม:
+          <span class="font-semibold">{{ activityName ?? table.filters.activityId }}</span>
+        </p>
+        <UButton
+          icon="lucide:x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          label="ล้างตัวกรองกิจกรรม"
+          @click="table.setFilter('activityId', '')"
+        />
+      </div>
+
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="flex flex-col gap-1.5">
           <label :for="searchId" class="text-sm font-medium text-highlighted">ค้นหา</label>

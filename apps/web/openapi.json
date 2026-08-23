@@ -1,0 +1,4240 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "HealthController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Login with username/email + password (sets auth cookies)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Rotate refresh token and issue a new access token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "example": {
+                    "success": true,
+                    "data": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke refresh token and clear auth cookies (idempotent)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Current user profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "operationId": "AuditLogsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "action",
+                "entity_type"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "LOGIN",
+                "STUDENT_CREATED",
+                "STUDENT_UPDATED",
+                "STUDENT_DISABLED",
+                "STUDENT_ENABLED",
+                "STUDENT_IMPORTED",
+                "LINE_ACCOUNT_LINKED",
+                "LINE_ACCOUNT_UNLINKED",
+                "BEACON_CREATED",
+                "BEACON_UPDATED",
+                "BEACON_DISABLED",
+                "BEACON_ENABLED",
+                "ACTIVITY_CREATED",
+                "ACTIVITY_UPDATED",
+                "ACTIVITY_PUBLISHED",
+                "ACTIVITY_CANCELLED",
+                "ACTIVITY_BEACON_LINKED",
+                "ACTIVITY_BEACON_UNLINKED",
+                "ATTENDANCE_MANUAL_CREATED",
+                "ATTENDANCE_UPDATED",
+                "USER_CREATED",
+                "USER_UPDATED",
+                "USER_DISABLED",
+                "USER_ENABLED",
+                "USER_PASSWORD_RESET"
+              ]
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "กรองตามผู้ใช้ (id)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "description": "กรองตามชนิด entity",
+            "schema": {
+              "example": "STUDENT",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลา (เริ่มต้น)",
+            "schema": {
+              "example": "2026-08-22T00:00:00.000Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลา (สิ้นสุด)",
+            "schema": {
+              "example": "2026-08-23T23:59:59.000Z",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditLogResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List audit logs (filter by action/user/entity/date range)",
+        "tags": [
+          "audit-logs"
+        ]
+      }
+    },
+    "/api/v1/audit-logs/{id}": {
+      "get": {
+        "operationId": "AuditLogsController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get an audit log with its old/new snapshots (spec §56)",
+        "tags": [
+          "audit-logs"
+        ]
+      }
+    },
+    "/api/v1/students": {
+      "get": {
+        "operationId": "StudentsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at",
+                "student_code",
+                "first_name",
+                "last_name",
+                "year",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            }
+          },
+          {
+            "name": "year",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 8,
+              "example": 3,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List students (paginated; search by code/name, filter by status/year)",
+        "tags": [
+          "students"
+        ]
+      },
+      "post": {
+        "operationId": "StudentsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStudentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a student",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/import/preview": {
+      "post": {
+        "description": "Multipart field \"file\". Header: student_code,first_name,last_name,birth_date,year[,email] — max 1000 rows.",
+        "operationId": "StudentsController_importPreview",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Validate a CSV/XLSX import file without writing anything (spec §8)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/import": {
+      "post": {
+        "description": "Multipart field \"file\". Existing student_code rows are updated (upsert); invalid rows are skipped and reported.",
+        "operationId": "StudentsController_import",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Import a CSV/XLSX file (re-validates, then applies the valid rows)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/{id}": {
+      "get": {
+        "operationId": "StudentsController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a student by id",
+        "tags": [
+          "students"
+        ]
+      },
+      "patch": {
+        "operationId": "StudentsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStudentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a student (no hard delete — spec §35)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/disable": {
+      "post": {
+        "operationId": "StudentsController_disable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Disable a student (status INACTIVE — this is the \"delete\", spec §35)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/enable": {
+      "post": {
+        "operationId": "StudentsController_enable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Enable a student (status ACTIVE)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/unlink-line": {
+      "post": {
+        "operationId": "StudentsController_unlinkLine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Unlink the student LINE account (admin reset, spec §7.1)",
+        "tags": [
+          "students"
+        ]
+      }
+    },
+    "/api/v1/beacons": {
+      "get": {
+        "operationId": "BeaconsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at",
+                "hwid",
+                "name",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "MAINTENANCE"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BeaconResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List beacons (paginated; search by hwid/name/location, filter by status)",
+        "tags": [
+          "beacons"
+        ]
+      },
+      "post": {
+        "operationId": "BeaconsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBeaconDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Register a beacon (spec §13 — HWID must be issued by LINE)",
+        "tags": [
+          "beacons"
+        ]
+      }
+    },
+    "/api/v1/beacons/{id}": {
+      "get": {
+        "operationId": "BeaconsController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a beacon by id",
+        "tags": [
+          "beacons"
+        ]
+      },
+      "patch": {
+        "operationId": "BeaconsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBeaconDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update a beacon (no hard delete — spec §35)",
+        "tags": [
+          "beacons"
+        ]
+      }
+    },
+    "/api/v1/beacons/{id}/disable": {
+      "post": {
+        "operationId": "BeaconsController_disable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Disable a beacon (status INACTIVE — this is the \"delete\", spec §35)",
+        "tags": [
+          "beacons"
+        ]
+      }
+    },
+    "/api/v1/beacons/{id}/enable": {
+      "post": {
+        "operationId": "BeaconsController_enable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Enable a beacon (status ACTIVE)",
+        "tags": [
+          "beacons"
+        ]
+      }
+    },
+    "/api/v1/beacon-logs": {
+      "get": {
+        "operationId": "BeaconLogsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "event_timestamp",
+                "hwid",
+                "processing_status"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "hwid",
+            "required": false,
+            "in": "query",
+            "description": "กรองตรงตาม HWID",
+            "schema": {
+              "example": "32af519e88",
+              "type": "string"
+            }
+          },
+          {
+            "name": "studentId",
+            "required": false,
+            "in": "query",
+            "description": "กรองตามรหัสนักศึกษา (id)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "activityId",
+            "required": false,
+            "in": "query",
+            "description": "กรองตามกิจกรรม — แสดงเฉพาะ log ของบีคอนที่ลิงก์กับกิจกรรมนี้ (spec §24)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "สถานะการประมวลผล",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RECEIVED",
+                "PROCESSED",
+                "DUPLICATE",
+                "UNKNOWN_USER",
+                "UNKNOWN_BEACON",
+                "NO_ACTIVE_ACTIVITY",
+                "OUTSIDE_CHECKIN_WINDOW",
+                "ERROR"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลาเริ่มต้น (เทียบกับ event timestamp ตามสเปก §6)",
+            "schema": {
+              "example": "2026-08-22T00:00:00.000Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลาสิ้นสุด",
+            "schema": {
+              "example": "2026-08-23T23:59:59.000Z",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BeaconLogResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List beacon logs (paginated; filter by hwid/student/status/date range — spec §46)",
+        "tags": [
+          "beacon-logs"
+        ]
+      }
+    },
+    "/api/v1/beacon-logs/{id}": {
+      "get": {
+        "operationId": "BeaconLogsController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconLogDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a beacon log with its raw LINE payload (spec §18)",
+        "tags": [
+          "beacon-logs"
+        ]
+      }
+    },
+    "/api/v1/activities": {
+      "get": {
+        "operationId": "ActivitiesController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at",
+                "name",
+                "start_at",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "createdById",
+            "required": false,
+            "in": "query",
+            "description": "กรองตามผู้สร้าง (id) — มีความหมายเต็มที่กับ Admin",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลาเริ่มกิจกรรม (เริ่มต้น)",
+            "schema": {
+              "example": "2026-09-01T00:00:00.000Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "description": "ช่วงเวลาเริ่มกิจกรรม (สิ้นสุด)",
+            "schema": {
+              "example": "2026-09-30T23:59:59.000Z",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List activities (paginated; own activities for organizers, all for admins — spec §29)",
+        "tags": [
+          "activities"
+        ]
+      },
+      "post": {
+        "operationId": "ActivitiesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a DRAFT activity (spec §11)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}": {
+      "get": {
+        "operationId": "ActivitiesController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get an activity with its linked beacons",
+        "tags": [
+          "activities"
+        ]
+      },
+      "patch": {
+        "operationId": "ActivitiesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActivityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update an activity (status only moves via publish/cancel — spec §35)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/publish": {
+      "post": {
+        "operationId": "ActivitiesController_publish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "DRAFT → PUBLISHED (needs ≥1 beacon and a non-overlapping window — spec §38, §54.4)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/cancel": {
+      "post": {
+        "operationId": "ActivitiesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cancel an activity (status CANCELLED — this is the \"delete\", spec §35)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/beacons": {
+      "get": {
+        "operationId": "ActivitiesController_listBeacons",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BeaconResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the beacons linked to an activity (spec §14)",
+        "tags": [
+          "activities"
+        ]
+      },
+      "post": {
+        "operationId": "ActivitiesController_linkBeacon",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkBeaconDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Link a beacon (overlap-checked when the activity is PUBLISHED — spec §38)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/beacons/{beaconId}": {
+      "delete": {
+        "operationId": "ActivitiesController_unlinkBeacon",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "beaconId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeaconResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Unlink a beacon (idempotent)",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/attendances": {
+      "get": {
+        "operationId": "AttendanceController_listByActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "check_in_at",
+              "type": "string",
+              "enum": [
+                "check_in_at",
+                "status",
+                "method",
+                "created_at"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRESENT",
+                "LATE",
+                "EXCUSED"
+              ]
+            }
+          },
+          {
+            "name": "method",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEACON",
+                "MANUAL"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttendanceRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List an activity's attendance rows (search by student code/name — spec §25)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/attendances/manual": {
+      "post": {
+        "operationId": "AttendanceController_manualCheckin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualCheckinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Manual check-in — organizer selects status + reason, allowed outside the window (spec §19)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/activities/{id}/attendances/{attendanceId}": {
+      "patch": {
+        "operationId": "AttendanceController_updateAttendance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "attendanceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAttendanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceRowDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Manually change an attendance status (audited — spec §56)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/students/{id}/attendances": {
+      "get": {
+        "operationId": "AttendanceController_listByStudent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "check_in_at",
+              "type": "string",
+              "enum": [
+                "check_in_at",
+                "status",
+                "method",
+                "created_at"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRESENT",
+                "LATE",
+                "EXCUSED"
+              ]
+            }
+          },
+          {
+            "name": "method",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BEACON",
+                "MANUAL"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentAttendanceRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "A student's attendance history across activities (admin only — spec §27, §35)",
+        "tags": [
+          "attendance"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "default": "created_at",
+              "type": "string",
+              "enum": [
+                "created_at",
+                "updated_at",
+                "email",
+                "username",
+                "role",
+                "status"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "ORGANIZER"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List users (paginated; search by email/username, filter by role/status)",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an organizer/admin account (spec §28)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "operationId": "UsersController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get a user by id",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Update email/username/role (password + status have dedicated endpoints)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/disable": {
+      "post": {
+        "operationId": "UsersController_disable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Disable a user (status INACTIVE — the \"delete\"; revokes sessions)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/enable": {
+      "post": {
+        "operationId": "UsersController_enable",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Enable a user (status ACTIVE)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/reset-password": {
+      "post": {
+        "operationId": "UsersController_resetPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reset a user's password (revokes all their sessions)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "operationId": "DashboardController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Overview stats + recent/open-checkin activities (own activities for organizers)",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/reports/activities/{id}": {
+      "get": {
+        "operationId": "ReportsController_activityReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityReportDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Activity attendance report — header + §44 counts + full list",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/activities/{id}/export": {
+      "get": {
+        "operationId": "ReportsController_exportActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "description": "รูปแบบไฟล์รายงาน (spec §44: CSV + Excel)",
+            "schema": {
+              "default": "csv",
+              "type": "string",
+              "enum": [
+                "csv",
+                "xlsx"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Export the activity report as CSV or Excel (spec §44)",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/reports/students/{id}": {
+      "get": {
+        "operationId": "ReportsController_studentReport",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentReportDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A student's attendance report across activities (admin only — spec §27, §35)",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/v1/line/webhook": {
+      "post": {
+        "description": "Signature-verified LINE callback. Always answers 200 once the signature is valid and events are persisted; processing continues in the background (spec §36).",
+        "operationId": "LineWebhookController_webhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "LINE webhook (beacon events)",
+        "tags": [
+          "line"
+        ]
+      }
+    },
+    "/api/v1/line/link": {
+      "post": {
+        "description": "Body: { studentCode (12 digits), birthDate (DDMMYYYY ค.ศ.) }. Max 5 failed attempts per student code per hour (429); conflicts answer 409.",
+        "operationId": "LineLinkController_link",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkLineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Link this LINE account to a student (student code + birth date)",
+        "tags": [
+          "line"
+        ]
+      }
+    },
+    "/api/v1/line/unlink": {
+      "post": {
+        "operationId": "LineLinkController_unlink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "example": {
+                    "success": true,
+                    "data": null
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Unlink the caller's own LINE account (idempotent)",
+        "tags": [
+          "line"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "MeController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Student profile + LINE link status of the caller (LIFF)",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/v1/me/attendances": {
+      "get": {
+        "operationId": "MeController_attendances",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "หมายเลขหน้า (เริ่มที่ 1)",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "คำค้นหา (contains, ไม่สนตัวพิมพ์เล็ก-ใหญ่)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "ฟิลด์ที่ใช้เรียงลำดับ (whitelist กำหนดที่แต่ละ endpoint)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttendanceItemDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Caller's own attendance history, newest first (created by the attendance engine (spec §10))",
+        "tags": [
+          "me"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "LINE Beacon Attendance API",
+    "description": "REST API for the LINE Beacon Attendance Management System",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "username_or_email": {
+            "type": "string",
+            "example": "admin",
+            "description": "Username or email"
+          },
+          "password": {
+            "type": "string",
+            "example": "change-me-admin",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "username_or_email",
+          "password"
+        ]
+      },
+      "UserProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "clx…cuid"
+          },
+          "email": {
+            "type": "string",
+            "example": "admin@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "ORGANIZER"
+            ],
+            "example": "ADMIN"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "username",
+          "role"
+        ]
+      },
+      "AuditActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "example": "admin"
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ]
+      },
+      "AuditLogResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user": {
+            "nullable": true,
+            "description": "null เมื่อ actor เป็นนักศึกษา (LIFF self-service, spec §56)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditActorDto"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "example": "STUDENT_CREATED"
+          },
+          "entityType": {
+            "type": "string",
+            "example": "STUDENT"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "action",
+          "entityType",
+          "entityId",
+          "createdAt"
+        ]
+      },
+      "AuditLogDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user": {
+            "nullable": true,
+            "description": "null เมื่อ actor เป็นนักศึกษา (LIFF self-service, spec §56)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditActorDto"
+              }
+            ]
+          },
+          "action": {
+            "type": "string",
+            "example": "STUDENT_CREATED"
+          },
+          "entityType": {
+            "type": "string",
+            "example": "STUDENT"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "oldValue": {
+            "type": "object",
+            "nullable": true
+          },
+          "newValue": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "action",
+          "entityType",
+          "entityId",
+          "createdAt",
+          "oldValue",
+          "newValue"
+        ]
+      },
+      "StudentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Somchai"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jaidee"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "2004-01-01",
+            "description": "วันเกิด (ค.ศ.) รูปแบบ YYYY-MM-DD"
+          },
+          "year": {
+            "type": "number",
+            "example": 3
+          },
+          "email": {
+            "type": "object",
+            "nullable": true,
+            "example": "student@example.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          },
+          "lineLinked": {
+            "type": "boolean",
+            "description": "เชื่อมต่อบัญชี LINE แล้วหรือไม่"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "studentCode",
+          "firstName",
+          "lastName",
+          "birthDate",
+          "year",
+          "email",
+          "status",
+          "lineLinked",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateStudentDto": {
+        "type": "object",
+        "properties": {
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038",
+            "description": "รหัสนักศึกษา ตัวเลข 12 หลัก"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Somchai"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jaidee"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "2004-01-01",
+            "description": "วันเกิด (ค.ศ.) รูปแบบ YYYY-MM-DD"
+          },
+          "year": {
+            "type": "number",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 8,
+            "description": "ชั้นปี 1–8"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "student@example.com"
+          }
+        },
+        "required": [
+          "studentCode",
+          "firstName",
+          "lastName",
+          "birthDate",
+          "year"
+        ]
+      },
+      "UpdateStudentDto": {
+        "type": "object",
+        "properties": {
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038",
+            "description": "รหัสนักศึกษา ตัวเลข 12 หลัก"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Somchai"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jaidee"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "2004-01-01",
+            "description": "วันเกิด (ค.ศ.) รูปแบบ YYYY-MM-DD"
+          },
+          "year": {
+            "type": "number",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 8,
+            "description": "ชั้นปี 1–8"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "example": "student@example.com"
+          }
+        }
+      },
+      "BeaconResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88"
+          },
+          "name": {
+            "type": "string",
+            "example": "CS Room 101"
+          },
+          "location": {
+            "type": "object",
+            "nullable": true,
+            "example": "CS101"
+          },
+          "description": {
+            "type": "object",
+            "nullable": true,
+            "example": "บีคอนห้อง CS101"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "MAINTENANCE"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "hwid",
+          "name",
+          "location",
+          "description",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateBeaconDto": {
+        "type": "object",
+        "properties": {
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88",
+            "description": "HWID ที่ LINE ออกให้ เลขฐานสิบหก 10 ตัวอักษร"
+          },
+          "name": {
+            "type": "string",
+            "example": "CS Room 101"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "CS101"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "บีคอนห้อง CS101"
+          }
+        },
+        "required": [
+          "hwid",
+          "name"
+        ]
+      },
+      "UpdateBeaconDto": {
+        "type": "object",
+        "properties": {
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88",
+            "description": "HWID ที่ LINE ออกให้ เลขฐานสิบหก 10 ตัวอักษร"
+          },
+          "name": {
+            "type": "string",
+            "example": "CS Room 101"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "CS101"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "บีคอนห้อง CS101"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "MAINTENANCE"
+            ],
+            "description": "เปลี่ยนสถานะได้ทุกค่า (เช่น MAINTENANCE) — สถานะ ACTIVE/INACTIVE มี endpoint เฉพาะ"
+          }
+        }
+      },
+      "BeaconLogStudentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038"
+          },
+          "name": {
+            "type": "string",
+            "example": "Somchai Jaidee"
+          }
+        },
+        "required": [
+          "id",
+          "studentCode",
+          "name"
+        ]
+      },
+      "BeaconLogBeaconDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "CS Room 101"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "BeaconLogResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lineUserId": {
+            "type": "string",
+            "example": "U1234567890abcdef1234567890abcdef"
+          },
+          "student": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeaconLogStudentDto"
+              }
+            ]
+          },
+          "beacon": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeaconLogBeaconDto"
+              }
+            ]
+          },
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88"
+          },
+          "eventType": {
+            "type": "string",
+            "example": "enter"
+          },
+          "eventTimestamp": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "webhookEventId": {
+            "type": "string",
+            "example": "22babee0-bdbe-43a5-a29a-ac8e6d1ba3c7"
+          },
+          "processingStatus": {
+            "type": "string",
+            "enum": [
+              "RECEIVED",
+              "PROCESSED",
+              "DUPLICATE",
+              "UNKNOWN_USER",
+              "UNKNOWN_BEACON",
+              "NO_ACTIVE_ACTIVITY",
+              "OUTSIDE_CHECKIN_WINDOW",
+              "ERROR"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z",
+            "description": "เวลาที่ server รับ webhook"
+          }
+        },
+        "required": [
+          "id",
+          "lineUserId",
+          "student",
+          "beacon",
+          "hwid",
+          "eventType",
+          "eventTimestamp",
+          "webhookEventId",
+          "processingStatus",
+          "createdAt"
+        ]
+      },
+      "BeaconLogDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lineUserId": {
+            "type": "string",
+            "example": "U1234567890abcdef1234567890abcdef"
+          },
+          "student": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeaconLogStudentDto"
+              }
+            ]
+          },
+          "beacon": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeaconLogBeaconDto"
+              }
+            ]
+          },
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88"
+          },
+          "eventType": {
+            "type": "string",
+            "example": "enter"
+          },
+          "eventTimestamp": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "webhookEventId": {
+            "type": "string",
+            "example": "22babee0-bdbe-43a5-a29a-ac8e6d1ba3c7"
+          },
+          "processingStatus": {
+            "type": "string",
+            "enum": [
+              "RECEIVED",
+              "PROCESSED",
+              "DUPLICATE",
+              "UNKNOWN_USER",
+              "UNKNOWN_BEACON",
+              "NO_ACTIVE_ACTIVITY",
+              "OUTSIDE_CHECKIN_WINDOW",
+              "ERROR"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z",
+            "description": "เวลาที่ server รับ webhook"
+          },
+          "rawPayload": {
+            "type": "object",
+            "description": "เหตุการณ์ดิบจาก LINE ตามที่รับมา (debug/audit, spec §18)"
+          }
+        },
+        "required": [
+          "id",
+          "lineUserId",
+          "student",
+          "beacon",
+          "hwid",
+          "eventType",
+          "eventTimestamp",
+          "webhookEventId",
+          "processingStatus",
+          "createdAt",
+          "rawPayload"
+        ]
+      },
+      "ActivityCreatorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "example": "somorganizer"
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ]
+      },
+      "ActivityResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "description": {
+            "type": "object",
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "nullable": true,
+            "example": "ห้องประชุมใหญ่"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z"
+          },
+          "endAt": {
+            "type": "string",
+            "example": "2026-09-01T16:00:00.000Z"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z"
+          },
+          "lateAt": {
+            "type": "string",
+            "example": "2026-09-01T14:00:00.000Z"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED"
+            ]
+          },
+          "timeState": {
+            "type": "string",
+            "enum": [
+              "UPCOMING",
+              "CHECKIN_OPEN",
+              "ONGOING",
+              "COMPLETED"
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ActivityCreatorDto"
+          },
+          "beaconCount": {
+            "type": "number",
+            "description": "จำนวนบีคอนที่ลิงก์อยู่"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "location",
+          "startAt",
+          "endAt",
+          "checkinOpenAt",
+          "lateAt",
+          "checkinCloseAt",
+          "status",
+          "timeState",
+          "createdBy",
+          "creator",
+          "beaconCount",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AttendanceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalStudents": {
+            "type": "number",
+            "description": "นักศึกษา ACTIVE ทั้งหมด (spec §24)"
+          },
+          "present": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          },
+          "excused": {
+            "type": "number"
+          },
+          "absent": {
+            "type": "number",
+            "description": "คำนวณ: Total − Present − Late − Excused (ไม่ persist, spec §44)"
+          }
+        },
+        "required": [
+          "totalStudents",
+          "present",
+          "late",
+          "excused",
+          "absent"
+        ]
+      },
+      "ActivityDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "description": {
+            "type": "object",
+            "nullable": true
+          },
+          "location": {
+            "type": "object",
+            "nullable": true,
+            "example": "ห้องประชุมใหญ่"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z"
+          },
+          "endAt": {
+            "type": "string",
+            "example": "2026-09-01T16:00:00.000Z"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z"
+          },
+          "lateAt": {
+            "type": "string",
+            "example": "2026-09-01T14:00:00.000Z"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED"
+            ]
+          },
+          "timeState": {
+            "type": "string",
+            "enum": [
+              "UPCOMING",
+              "CHECKIN_OPEN",
+              "ONGOING",
+              "COMPLETED"
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/ActivityCreatorDto"
+          },
+          "beaconCount": {
+            "type": "number",
+            "description": "จำนวนบีคอนที่ลิงก์อยู่"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "beacons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BeaconResponseDto"
+            }
+          },
+          "attendanceSummary": {
+            "$ref": "#/components/schemas/AttendanceSummaryDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "location",
+          "startAt",
+          "endAt",
+          "checkinOpenAt",
+          "lateAt",
+          "checkinCloseAt",
+          "status",
+          "timeState",
+          "createdBy",
+          "creator",
+          "beaconCount",
+          "createdAt",
+          "updatedAt",
+          "beacons",
+          "attendanceSummary"
+        ]
+      },
+      "CreateActivityDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "กิจกรรมต้อนรับนักศึกษาใหม่"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "ห้องประชุมใหญ่"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z",
+            "description": "เวลาเริ่มกิจกรรม (UTC)"
+          },
+          "endAt": {
+            "type": "string",
+            "example": "2026-09-01T16:00:00.000Z",
+            "description": "เวลาสิ้นสุดกิจกรรม (UTC)"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z",
+            "description": "เวลาเปิดเช็คชื่อ (UTC)"
+          },
+          "lateAt": {
+            "type": "string",
+            "example": "2026-09-01T14:00:00.000Z",
+            "description": "เกณฑ์มาสาย — เช็คหลังเวลานี้ถือว่า LATE (UTC)"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z",
+            "description": "เวลาปิดเช็คชื่อ (UTC)"
+          }
+        },
+        "required": [
+          "name",
+          "startAt",
+          "endAt",
+          "checkinOpenAt",
+          "lateAt",
+          "checkinCloseAt"
+        ]
+      },
+      "UpdateActivityDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "กิจกรรมต้อนรับนักศึกษาใหม่"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "ห้องประชุมใหญ่"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z",
+            "description": "เวลาเริ่มกิจกรรม (UTC)"
+          },
+          "endAt": {
+            "type": "string",
+            "example": "2026-09-01T16:00:00.000Z",
+            "description": "เวลาสิ้นสุดกิจกรรม (UTC)"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z",
+            "description": "เวลาเปิดเช็คชื่อ (UTC)"
+          },
+          "lateAt": {
+            "type": "string",
+            "example": "2026-09-01T14:00:00.000Z",
+            "description": "เกณฑ์มาสาย — เช็คหลังเวลานี้ถือว่า LATE (UTC)"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z",
+            "description": "เวลาปิดเช็คชื่อ (UTC)"
+          }
+        }
+      },
+      "LinkBeaconDto": {
+        "type": "object",
+        "properties": {
+          "beaconId": {
+            "type": "string",
+            "description": "รหัสบีคอน (id) ที่จะลิงก์กับกิจกรรม"
+          }
+        },
+        "required": [
+          "beaconId"
+        ]
+      },
+      "AttendanceStudentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038"
+          },
+          "name": {
+            "type": "string",
+            "example": "Somchai Jaidee"
+          }
+        },
+        "required": [
+          "id",
+          "studentCode",
+          "name"
+        ]
+      },
+      "AttendanceBeaconDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "CS Room 101"
+          },
+          "hwid": {
+            "type": "string",
+            "example": "32af519e88"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "hwid"
+        ]
+      },
+      "AttendanceActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "example": "somchai"
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ]
+      },
+      "AttendanceRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/AttendanceStudentDto"
+          },
+          "checkInAt": {
+            "type": "string",
+            "example": "2026-09-01T01:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "LATE",
+              "ABSENT",
+              "EXCUSED"
+            ]
+          },
+          "checkinMethod": {
+            "type": "string",
+            "enum": [
+              "BEACON",
+              "MANUAL"
+            ]
+          },
+          "beacon": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceBeaconDto"
+              }
+            ]
+          },
+          "checkedInBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceActorDto"
+              }
+            ]
+          },
+          "manualReason": {
+            "type": "object",
+            "nullable": true,
+            "example": "นักศึกษาปิด Bluetooth"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-09-01T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-09-01T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "student",
+          "checkInAt",
+          "status",
+          "checkinMethod",
+          "beacon",
+          "checkedInBy",
+          "manualReason",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ManualCheckinDto": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "description": "รหัสนักศึกษา (id) ที่เช็คชื่อ"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "LATE",
+              "EXCUSED"
+            ],
+            "description": "สถานะที่ organizer เลือก"
+          },
+          "manualReason": {
+            "type": "string",
+            "example": "นักศึกษาปิด Bluetooth",
+            "description": "เหตุผลที่ต้องเช็คชื่อแทน (spec §19)"
+          }
+        },
+        "required": [
+          "studentId",
+          "status",
+          "manualReason"
+        ]
+      },
+      "UpdateAttendanceDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "LATE",
+              "ABSENT",
+              "EXCUSED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "StudentAttendanceRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "activityId": {
+            "type": "string"
+          },
+          "activityName": {
+            "type": "string",
+            "example": "Git & GitHub Workshop"
+          },
+          "checkInAt": {
+            "type": "string",
+            "example": "2026-09-01T01:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "LATE",
+              "ABSENT",
+              "EXCUSED"
+            ]
+          },
+          "checkinMethod": {
+            "type": "string",
+            "enum": [
+              "BEACON",
+              "MANUAL"
+            ]
+          },
+          "beacon": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceBeaconDto"
+              }
+            ]
+          },
+          "checkedInBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceActorDto"
+              }
+            ]
+          },
+          "manualReason": {
+            "type": "object",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "activityId",
+          "activityName",
+          "checkInAt",
+          "status",
+          "checkinMethod",
+          "beacon",
+          "checkedInBy",
+          "manualReason"
+        ]
+      },
+      "UserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "example": "organizer@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "somorganizer"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "ORGANIZER"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "username",
+          "role",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "organizer@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "somorganizer"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "รหัสผ่าน (argon2 ตาม design doc)"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "ORGANIZER"
+            ],
+            "description": "บทบาท (spec §28 Assign Role)"
+          }
+        },
+        "required": [
+          "email",
+          "username",
+          "password",
+          "role"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "organizer@example.com"
+          },
+          "username": {
+            "type": "string",
+            "example": "somorganizer"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "รหัสผ่าน (argon2 ตาม design doc)"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "ORGANIZER"
+            ],
+            "description": "บทบาท (spec §28 Assign Role)"
+          }
+        }
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "description": "รหัสผ่านใหม่"
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "TodayStatsDto": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "number",
+            "description": "กิจกรรมที่เริ่มวันนี้ (ตามวันประเทศไทย)"
+          },
+          "checkins": {
+            "type": "number",
+            "description": "การเช็คชื่อที่เกิดวันนี้"
+          },
+          "present": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "activities",
+          "checkins",
+          "present",
+          "late"
+        ]
+      },
+      "RecentActivityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED"
+            ]
+          },
+          "timeState": {
+            "type": "string",
+            "enum": [
+              "UPCOMING",
+              "CHECKIN_OPEN",
+              "ONGOING",
+              "COMPLETED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "startAt",
+          "status",
+          "timeState"
+        ]
+      },
+      "OpenCheckinActivityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Git & GitHub Workshop"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z"
+          },
+          "lateAt": {
+            "type": "string",
+            "example": "2026-09-01T14:00:00.000Z"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z"
+          },
+          "present": {
+            "type": "number",
+            "description": "จำนวน PRESENT สะสมของกิจกรรมนี้"
+          },
+          "late": {
+            "type": "number",
+            "description": "จำนวน LATE สะสมของกิจกรรมนี้"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "checkinOpenAt",
+          "lateAt",
+          "checkinCloseAt",
+          "present",
+          "late"
+        ]
+      },
+      "DashboardResponseDto": {
+        "type": "object",
+        "properties": {
+          "today": {
+            "$ref": "#/components/schemas/TodayStatsDto"
+          },
+          "totalActivities": {
+            "type": "number"
+          },
+          "recentActivities": {
+            "description": "กิจกรรมล่าสุด 5 รายการ",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecentActivityDto"
+            }
+          },
+          "openCheckinActivities": {
+            "description": "กิจกรรมที่กำลังเปิดเช็คชื่อ (เผยแพร่ + อยู่ในหน้าต่างเช็คชื่อตอนนี้)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenCheckinActivityDto"
+            }
+          }
+        },
+        "required": [
+          "today",
+          "totalActivities",
+          "recentActivities",
+          "openCheckinActivities"
+        ]
+      },
+      "ActivityReportActivityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "example": "Orientation 2026"
+          },
+          "startAt": {
+            "type": "string",
+            "example": "2026-09-01T13:00:00.000Z"
+          },
+          "endAt": {
+            "type": "string",
+            "example": "2026-09-01T16:00:00.000Z"
+          },
+          "checkinOpenAt": {
+            "type": "string",
+            "example": "2026-09-01T12:30:00.000Z"
+          },
+          "checkinCloseAt": {
+            "type": "string",
+            "example": "2026-09-01T15:00:00.000Z"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CANCELLED"
+            ]
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/ActivityCreatorDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "startAt",
+          "endAt",
+          "checkinOpenAt",
+          "checkinCloseAt",
+          "status",
+          "organizer"
+        ]
+      },
+      "ActivityReportDto": {
+        "type": "object",
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/ActivityReportActivityDto"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AttendanceSummaryDto"
+          },
+          "attendances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttendanceRowDto"
+            }
+          }
+        },
+        "required": [
+          "activity",
+          "summary",
+          "attendances"
+        ]
+      },
+      "StudentReportStudentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038"
+          },
+          "name": {
+            "type": "string",
+            "example": "Somchai Jaidee"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "studentCode",
+          "name",
+          "status"
+        ]
+      },
+      "StudentReportSummaryDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "จำนวนรายการเช็คชื่อทั้งหมด"
+          },
+          "present": {
+            "type": "number"
+          },
+          "late": {
+            "type": "number"
+          },
+          "excused": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "present",
+          "late",
+          "excused"
+        ]
+      },
+      "StudentReportDto": {
+        "type": "object",
+        "properties": {
+          "student": {
+            "$ref": "#/components/schemas/StudentReportStudentDto"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/StudentReportSummaryDto"
+          },
+          "attendances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentAttendanceRowDto"
+            }
+          }
+        },
+        "required": [
+          "student",
+          "summary",
+          "attendances"
+        ]
+      },
+      "LinkLineDto": {
+        "type": "object",
+        "properties": {
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038",
+            "description": "รหัสนักศึกษา ตัวเลข 12 หลัก"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "01012004",
+            "description": "วันเดือนปีเกิด ตัวเลข 8 หลัก DDMMYYYY ปี ค.ศ."
+          }
+        },
+        "required": [
+          "studentCode",
+          "birthDate"
+        ]
+      },
+      "StudentProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentCode": {
+            "type": "string",
+            "example": "660112230038"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Somchai"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Jaidee"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "2004-01-01",
+            "description": "วันเกิด (ค.ศ.) รูปแบบ YYYY-MM-DD"
+          },
+          "year": {
+            "type": "number",
+            "example": 3
+          },
+          "email": {
+            "type": "object",
+            "nullable": true,
+            "example": "student@example.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "studentCode",
+          "firstName",
+          "lastName",
+          "birthDate",
+          "year",
+          "email",
+          "status"
+        ]
+      },
+      "LineLinkInfoDto": {
+        "type": "object",
+        "properties": {
+          "lineUserId": {
+            "type": "string",
+            "example": "U91AFXXXXXXXX"
+          },
+          "displayName": {
+            "type": "object",
+            "nullable": true,
+            "example": "Somchai"
+          },
+          "pictureUrl": {
+            "type": "object",
+            "nullable": true,
+            "example": "https://profile.line-scdn.net/..."
+          },
+          "linkedAt": {
+            "type": "string",
+            "example": "2026-08-22T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "lineUserId",
+          "displayName",
+          "pictureUrl",
+          "linkedAt"
+        ]
+      },
+      "MeResponseDto": {
+        "type": "object",
+        "properties": {
+          "linked": {
+            "type": "boolean",
+            "description": "บัญชี LINE นี้เชื่อมกับนักศึกษาแล้วหรือไม่"
+          },
+          "student": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StudentProfileDto"
+              }
+            ]
+          },
+          "line": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LineLinkInfoDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "linked",
+          "student",
+          "line"
+        ]
+      },
+      "AttendanceItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "activityId": {
+            "type": "string"
+          },
+          "activityName": {
+            "type": "string",
+            "example": "ปฐมนิเทศน์นักศึกษาใหม่"
+          },
+          "checkInAt": {
+            "type": "string",
+            "example": "2026-08-22T02:00:00.000Z",
+            "description": "เวลาเช็คชื่อ (UTC) แสดงผลเป็น Asia/Bangkok"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "LATE",
+              "ABSENT",
+              "EXCUSED"
+            ]
+          },
+          "checkinMethod": {
+            "type": "string",
+            "enum": [
+              "BEACON",
+              "MANUAL"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "activityId",
+          "activityName",
+          "checkInAt",
+          "status",
+          "checkinMethod"
+        ]
+      }
+    }
+  }
+}

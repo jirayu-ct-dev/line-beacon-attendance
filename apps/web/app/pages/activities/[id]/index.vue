@@ -10,6 +10,11 @@ const route = useRoute()
 const nuxtApp = useNuxtApp()
 const toast = useToast()
 const { confirm } = useConfirm()
+const { user } = useAuth()
+
+// Beacon Logs viewer is admin-only (spec §4.3) — hide the §24 deep link from
+// organizers instead of sending them to a 403 page.
+const isAdmin = computed(() => user.value?.role === 'ADMIN')
 
 const activity = ref<ActivityDetail | null>(null)
 const loading = ref(true)
@@ -315,11 +320,22 @@ const onUnlinkBeacon = async (beacon: Beacon): Promise<void> => {
       </UCard>
 
       <UCard>
-        <div class="flex flex-col gap-1.5">
-          <h2 class="text-base font-semibold text-highlighted">บีคอนที่ลิงก์อยู่</h2>
-          <p class="text-sm text-muted">
-            บีคอนเดียวกันใช้ซ้อนกันระหว่างกิจกรรมที่เผยแพร่แล้วไม่ได้ถ้าช่วงเช็คชื่อทับกัน
-          </p>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="flex flex-col gap-1.5">
+            <h2 class="text-base font-semibold text-highlighted">บีคอนที่ลิงก์อยู่</h2>
+            <p class="text-sm text-muted">
+              บีคอนเดียวกันใช้ซ้อนกันระหว่างกิจกรรมที่เผยแพร่แล้วไม่ได้ถ้าช่วงเช็คชื่อทับกัน
+            </p>
+          </div>
+          <UButton
+            v-if="isAdmin"
+            icon="lucide:radar"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            label="ดู Beacon Logs"
+            :to="`/admin/beacon-logs?activityId=${activity.id}`"
+          />
         </div>
 
         <ul v-if="activity.beacons.length > 0" class="mt-4 flex flex-col divide-y divide-default">

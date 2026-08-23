@@ -3,9 +3,31 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import BeaconLogsPage from '~/pages/admin/beacon-logs.vue'
 import { useAuth } from '~/composables/useAuth'
-import type { ApiEnvelope, BeaconLog, Paginated, UserProfile } from '~/utils/api'
+import type { ActivityDetail, ApiEnvelope, BeaconLog, Paginated, UserProfile } from '~/utils/api'
 
 const admin: UserProfile = { id: 'u1', email: 'admin@example.com', username: 'admin', role: 'ADMIN' }
+
+const activityDetail = (overrides: Partial<ActivityDetail> = {}): ActivityDetail => ({
+  id: 'a1',
+  name: 'IT Orientation 2026',
+  description: null,
+  location: 'CS Lab',
+  startAt: '2026-08-22T08:00:00.000Z',
+  endAt: '2026-08-22T10:00:00.000Z',
+  checkinOpenAt: '2026-08-22T07:00:00.000Z',
+  lateAt: '2026-08-22T08:10:00.000Z',
+  checkinCloseAt: '2026-08-22T08:30:00.000Z',
+  status: 'PUBLISHED',
+  timeState: 'COMPLETED',
+  createdBy: 'u1',
+  creator: { id: 'u1', username: 'admin' },
+  beaconCount: 0,
+  beacons: [],
+  attendanceSummary: { totalStudents: 0, present: 0, late: 0, excused: 0, absent: 0 },
+  createdAt: '2026-08-01T00:00:00.000Z',
+  updatedAt: '2026-08-01T00:00:00.000Z',
+  ...overrides,
+})
 
 const log = (overrides: Partial<BeaconLog> = {}): BeaconLog => ({
   id: 'l1',
@@ -91,5 +113,21 @@ describe('admin beacon-logs page', () => {
 
     expect(wrapper.text()).toContain('ไม่มีสิทธิ์เข้าถึง')
     expect(wrapper.text()).not.toContain('ยังไม่มีข้อมูล')
+  })
+
+  it('shows the activity filter banner for ?activityId= deep links (spec §24)', async () => {
+    registerEndpoint('/api/v1/beacon-logs', () => paginated([log()]))
+    registerEndpoint('/api/v1/activities/a1', () => ({ success: true, data: activityDetail() }))
+    const wrapper = await mountSuspended(BeaconLogsPage, { route: '/admin/beacon-logs?activityId=a1' })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('กรองตามกิจกรรม')
+    expect(wrapper.text()).toContain('IT Orientation 2026')
+
+    const clear = wrapper.findAll('button').find((button) => button.text() === 'ล้างตัวกรองกิจกรรม')
+    expect(clear).toBeDefined()
+    await clear!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('กรองตามกิจกรรม')
   })
 })
