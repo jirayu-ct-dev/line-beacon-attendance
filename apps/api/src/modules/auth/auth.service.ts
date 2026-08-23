@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt'
 import { hash as argonHash, verify as argonVerify } from 'argon2'
 import { createHash, randomBytes } from 'node:crypto'
 import { User, UserRole } from '../../generated/prisma/client'
+import { AuditService } from '../audit/audit.service'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
 import { UserProfileDto } from './dto/user-profile.dto'
@@ -27,6 +28,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly audit: AuditService,
     configService: ConfigService,
   ) {
     // Defaults per design doc §5.2: access 15 min, refresh 7 days
@@ -42,6 +44,9 @@ export class AuthService {
     if (!user || user.status !== 'ACTIVE' || !(await argonVerify(user.passwordHash, dto.password))) {
       throw new UnauthorizedException(INVALID_CREDENTIALS)
     }
+    // Successful logins are audited (spec §56 LOGIN); failures are not — the
+    // no-enumeration design keeps wrong-password attempts out of audit rows.
+    await this.audit.log({ userId: user.id, action: 'LOGIN', entityType: 'user', entityId: user.id })
     return this.issueTokens(user)
   }
 

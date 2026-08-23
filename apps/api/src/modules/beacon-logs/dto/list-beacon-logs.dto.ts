@@ -30,6 +30,15 @@ export class ListBeaconLogsDto extends PaginationDto {
   @MaxLength(255)
   studentId?: string
 
+  @ApiProperty({
+    required: false,
+    description: 'กรองตามกิจกรรม — แสดงเฉพาะ log ของบีคอนที่ลิงก์กับกิจกรรมนี้ (spec §24)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  activityId?: string
+
   @ApiProperty({ enum: ProcessingStatus, required: false, description: 'สถานะการประมวลผล' })
   @IsOptional()
   @IsIn(Object.values(ProcessingStatus))

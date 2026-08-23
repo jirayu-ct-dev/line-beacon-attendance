@@ -8,6 +8,7 @@
     "dev": "nest start --watch",
     "start": "node dist/main",
     "db:seed": "prisma db seed",
+    "gen:openapi": "ts-node scripts/generate-openapi.ts ../web/openapi.json",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "postinstall": "prisma generate"
@@ -24,7 +25,6 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "jest": "^30.4.2",
-    "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "testcontainers": "^12.1.0",
     "ts-jest": "^29.4.12",
@@ -54,6 +54,7 @@
     "nestjs-pino": "^4.6.1",
     "pg": "^8.23.0",
     "pino-http": "^11.0.0",
+    "prisma": "^7.9.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   }

@@ -36,6 +36,7 @@ import { PrismaModule } from './prisma/prisma.module'
             'req.headers.cookie',
             'res.headers["set-cookie"]',
             'req.body.password',
+            'req.body.newPassword',
           ],
           censor: '[REDACTED]',
         },

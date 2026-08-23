@@ -45,6 +45,7 @@ describe('Auth (integration)', () => {
     await app.init()
     prisma = app.get(PrismaService)
 
+    await prisma.auditLog.deleteMany({ where: { user: { email: TEST_USER.email } } })
     await prisma.refreshToken.deleteMany({ where: { user: { email: TEST_USER.email } } })
     await prisma.user.deleteMany({ where: { email: TEST_USER.email } })
     await prisma.user.create({
@@ -66,6 +67,8 @@ describe('Auth (integration)', () => {
   })
 
   afterAll(async () => {
+    // LOGIN audit rows (spec §56) hold a Restrict FK on the user — drop them first
+    await prisma.auditLog.deleteMany({ where: { user: { email: TEST_USER.email } } })
     await prisma.refreshToken.deleteMany({ where: { user: { email: TEST_USER.email } } })
     await prisma.user.deleteMany({ where: { email: TEST_USER.email } })
     await app.close()
@@ -91,6 +94,29 @@ describe('Auth (integration)', () => {
       success: true,
       data: { id: expect.any(String), email: TEST_USER.email, username: TEST_USER.username, role: 'ADMIN' },
     })
+  })
+
+  it('login writes a LOGIN audit row (spec §56)', async () => {
+    await request(server())
+      .post('/api/v1/auth/login')
+      .send({ username_or_email: TEST_USER.username, password: TEST_USER.password })
+      .expect(200)
+
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: 'LOGIN', user: { email: TEST_USER.email } },
+      orderBy: { createdAt: 'desc' },
+    })
+    expect(audit).toMatchObject({ action: 'LOGIN', entityType: 'user' })
+    expect(audit!.entityId).toBe(audit!.userId)
+  })
+
+  it('CORS echoes the configured origin with credentials (spec §30.12)', async () => {
+    const res = await request(server())
+      .get('/api/v1/health')
+      .set('Origin', process.env.FRONTEND_URL ?? 'http://localhost:3000')
+      .expect(200)
+    expect(res.headers['access-control-allow-origin']).toBe(process.env.FRONTEND_URL ?? 'http://localhost:3000')
+    expect(res.headers['access-control-allow-credentials']).toBe('true')
   })
 
   it('login with wrong password → 401 envelope, generic Thai message', async () => {

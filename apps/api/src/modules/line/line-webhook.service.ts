@@ -61,9 +61,10 @@ export class LineWebhookService {
       payload && typeof payload === 'object' && Array.isArray((payload as { events?: unknown }).events)
         ? ((payload as { events: unknown[] }).events)
         : []
-    if (rawEvents.length === 0) return // ack immediately (spec §36)
-
+    // "Webhook received" (spec §49) — logged for every signature-valid
+    // delivery, including empty ones (which are acked immediately, §36).
     this.logger.log(`LINE webhook accepted: ${rawEvents.length} event(s)`)
+    if (rawEvents.length === 0) return
 
     for (const rawEvent of rawEvents) {
       const event = parseBeaconEvent(rawEvent)

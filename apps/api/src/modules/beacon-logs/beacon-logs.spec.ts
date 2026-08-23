@@ -82,6 +82,8 @@ describe('BeaconLogs (integration)', () => {
 
   afterAll(async () => {
     await prisma.beaconLog.deleteMany({ where: { webhookEventId: { startsWith: WEBHOOK_ID_PREFIX } } })
+    await prisma.activityBeacon.deleteMany({ where: { activity: { name: { startsWith: 'ITEST-BLOG-' } } } })
+    await prisma.activity.deleteMany({ where: { name: { startsWith: 'ITEST-BLOG-' } } })
     await prisma.beacon.deleteMany({ where: { hwid: { startsWith: HWID_PREFIX } } })
     await prisma.student.deleteMany({ where: { studentCode: { startsWith: CODE_PREFIX } } })
     await deleteTestUser(prisma, ADMIN.email)
@@ -167,6 +169,49 @@ describe('BeaconLogs (integration)', () => {
       .set('Cookie', admin.cookie)
       .expect(200)
     expect(byLineUser.body.data.total).toBe(2)
+  })
+
+  it('GET /beacon-logs filters by activityId — only logs of the linked beacons (spec §24)', async () => {
+    const activity = await prisma.activity.create({
+      data: {
+        name: 'ITEST-BLOG-Workshop',
+        createdBy: admin.id,
+        checkinOpenAt: new Date('2026-02-01T07:00:00Z'),
+        lateAt: new Date('2026-02-01T08:10:00Z'),
+        checkinCloseAt: new Date('2026-02-01T08:30:00Z'),
+        startAt: new Date('2026-02-01T08:00:00Z'),
+        endAt: new Date('2026-02-01T10:00:00Z'),
+      },
+      select: { id: true },
+    })
+    await prisma.activityBeacon.create({ data: { activityId: activity.id, beaconId } })
+
+    const res = await request(server())
+      .get(`/api/v1/beacon-logs?activityId=${activity.id}`)
+      .set('Cookie', admin.cookie)
+      .expect(200)
+    // beacon 1 (hwid 1) is linked → its two logs; hwid 2/3 logs are excluded
+    expect(res.body.data.total).toBe(2)
+    expect(res.body.data.items.every((l: { hwid: string }) => l.hwid === hwid(1))).toBe(true)
+
+    // an activity with no linked beacons matches nothing
+    const unlinked = await prisma.activity.create({
+      data: {
+        name: 'ITEST-BLOG-NoBeacons',
+        createdBy: admin.id,
+        checkinOpenAt: new Date('2026-02-01T07:00:00Z'),
+        lateAt: new Date('2026-02-01T08:10:00Z'),
+        checkinCloseAt: new Date('2026-02-01T08:30:00Z'),
+        startAt: new Date('2026-02-01T08:00:00Z'),
+        endAt: new Date('2026-02-01T10:00:00Z'),
+      },
+      select: { id: true },
+    })
+    const empty = await request(server())
+      .get(`/api/v1/beacon-logs?activityId=${unlinked.id}`)
+      .set('Cookie', admin.cookie)
+      .expect(200)
+    expect(empty.body.data.total).toBe(0)
   })
 
   // --- detail (spec §18 — raw payload for debugging) ---------------------------

@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common'
 import { Response } from 'express'
+import { Prisma } from '../../generated/prisma/client'
 
 /**
  * Catch-all exception filter rendering every error as the envelope from spec §48:
@@ -29,8 +30,25 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const status: number =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
 
-    if (status >= 500) {
-      // Log the full error for 5xx (spec §49 categories: database/unhandled errors)
+    // Spec §49 "Unauthorized Access": 401/403 rejections (guards, login
+    // failures) are security events — logged centrally here with method+url,
+    // never with credentials.
+    if (status === HttpStatus.UNAUTHORIZED || status === HttpStatus.FORBIDDEN) {
+      const req = host.switchToHttp().getRequest<{ method?: string; url?: string }>()
+      this.logger.warn(`Unauthorized access (spec §49): ${req.method ?? '?'} ${req.url ?? '?'} → ${status}`)
+    }
+
+    const isDbError =
+      exception instanceof Prisma.PrismaClientKnownRequestError ||
+      exception instanceof Prisma.PrismaClientUnknownRequestError
+    if (isDbError) {
+      // Spec §49 "Database Error": unconverted Prisma failures get a distinct
+      // marker so they are searchable next to the generic 5xx stacks. The
+      // Prisma message/stack stays in logs only (constraint names, no values).
+      const code = exception instanceof Prisma.PrismaClientKnownRequestError ? exception.code : 'UNKNOWN'
+      this.logger.error(`Database error (spec §49): ${code} ${exception.message}`, exception.stack)
+    } else if (status >= 500) {
+      // Log the full error for 5xx (spec §49 categories: unhandled errors)
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
         'Unhandled server error',

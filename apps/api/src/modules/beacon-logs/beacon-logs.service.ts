@@ -25,7 +25,7 @@ export class BeaconLogsService {
 
   async list(query: ListBeaconLogsDto): Promise<Paginated<BeaconLogResponseDto>> {
     const { page, pageSize, order } = resolvePagination(query)
-    const where = this.buildWhere(query)
+    const where = await this.buildWhere(query)
 
     const [logs, total] = await this.prisma.$transaction([
       this.prisma.beaconLog.findMany({
@@ -50,14 +50,14 @@ export class BeaconLogsService {
     return { ...toResponse(log), rawPayload: log.rawPayload }
   }
 
-  private buildWhere(query: ListBeaconLogsDto): Prisma.BeaconLogWhereInput {
+  private async buildWhere(query: ListBeaconLogsDto): Promise<Prisma.BeaconLogWhereInput> {
     const from = query.from !== undefined ? new Date(query.from) : undefined
     const to = query.to !== undefined ? new Date(query.to) : undefined
     if (from && to && from > to) {
       throw new BadRequestException('ช่วงเวลาไม่ถูกต้อง — from ต้องมาก่อน to')
     }
 
-    return {
+    const where: Prisma.BeaconLogWhereInput = {
       // Search matches line_user_id / webhook_event_id / hwid (§46)
       ...(query.search && {
         OR: [
@@ -66,8 +66,6 @@ export class BeaconLogsService {
           { hwid: { contains: query.search, mode: 'insensitive' } },
         ],
       }),
-      // Logs store the lowercase hwid exactly as LINE sends it (§9)
-      ...(query.hwid && { hwid: query.hwid.toLowerCase() }),
       ...(query.studentId && { studentId: query.studentId }),
       ...(query.status && { processingStatus: query.status }),
       ...((from || to) && {
@@ -77,6 +75,25 @@ export class BeaconLogsService {
         },
       }),
     }
+
+    // Logs store the lowercase hwid exactly as LINE sends it (§9)
+    if (query.activityId) {
+      // Spec §24 "View Beacon Logs เฉพาะ Activity": beacon_logs has no activity
+      // column — scope by the hwids linked to the activity via activity_beacons.
+      // Combined with ?hwid= the two are intersected; an activity with no
+      // linked beacons matches nothing (in: []).
+      const linked = await this.prisma.activityBeacon.findMany({
+        where: { activityId: query.activityId },
+        select: { beacon: { select: { hwid: true } } },
+      })
+      const linkedHwids = linked.map((row) => row.beacon.hwid.toLowerCase())
+      where.hwid = query.hwid
+        ? { in: linkedHwids.filter((h) => h === query.hwid!.toLowerCase()) }
+        : { in: linkedHwids }
+    } else if (query.hwid) {
+      where.hwid = query.hwid.toLowerCase()
+    }
+    return where
   }
 }
 

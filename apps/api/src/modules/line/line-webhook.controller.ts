@@ -1,5 +1,6 @@
 import { Controller, Headers, HttpCode, HttpStatus, Post, RawBodyRequest, Req } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Throttle } from '@nestjs/throttler'
 import { Request } from 'express'
 import { Public } from '../../common/auth/public.decorator'
 import { LineWebhookService } from './line-webhook.service'
@@ -18,6 +19,10 @@ export class LineWebhookController {
 
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
+  // Rate limit per design doc §3 (throttler covers /line/webhook) — generous,
+  // because LINE delivers bursts when many students enter a beacon's range at
+  // once and each delivery may batch several events.
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
   @ApiOperation({
     summary: 'LINE webhook (beacon events)',
     description:
