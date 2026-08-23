@@ -30,6 +30,15 @@ export class ActivityResponseDto {
   @ApiProperty({ example: '2026-08-22T00:00:00.000Z' }) updatedAt!: string
 }
 
+export class AttendanceSummaryDto {
+  @ApiProperty({ description: 'นักศึกษา ACTIVE ทั้งหมด (spec §24)' }) totalStudents!: number
+  @ApiProperty() present!: number
+  @ApiProperty() late!: number
+  @ApiProperty() excused!: number
+  @ApiProperty({ description: 'คำนวณ: Total − Present − Late − Excused (ไม่ persist, spec §44)' }) absent!: number
+}
+
 export class ActivityDetailDto extends ActivityResponseDto {
   @ApiProperty({ type: BeaconResponseDto, isArray: true }) beacons!: BeaconResponseDto[]
+  @ApiProperty({ type: AttendanceSummaryDto }) attendanceSummary!: AttendanceSummaryDto
 }

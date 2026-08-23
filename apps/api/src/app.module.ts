@@ -15,6 +15,8 @@ import { ActivitiesModule } from './modules/activities/activities.module'
 import { AttendanceModule } from './modules/attendance/attendance.module'
 import { BeaconLogsModule } from './modules/beacon-logs/beacon-logs.module'
 import { BeaconsModule } from './modules/beacons/beacons.module'
+import { DashboardModule } from './modules/dashboard/dashboard.module'
+import { UsersModule } from './modules/users/users.module'
 import { LineModule } from './modules/line/line.module'
 import { StudentsModule } from './modules/students/students.module'
 import { PrismaModule } from './prisma/prisma.module'
@@ -56,6 +58,8 @@ import { PrismaModule } from './prisma/prisma.module'
     BeaconLogsModule,
     ActivitiesModule,
     AttendanceModule,
+    UsersModule,
+    DashboardModule,
     LineModule,
   ],
   controllers: [HealthController],

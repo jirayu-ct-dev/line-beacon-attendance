@@ -22,9 +22,13 @@ import { UpdateStudentDto } from './dto/update-student.dto'
 import { ImportApplyResult, ImportPreviewResult, StudentsImportService } from './students-import.service'
 import { StudentsService } from './students.service'
 
-/** Admin-only student management (spec §27, §29, §35) — JWT guard is global. */
+/**
+ * Student management (spec §27, §29, §35) — JWT guard is global. Both roles
+ * may read (organizers pick a student for manual check-in, spec §19/§23);
+ * every mutation stays admin-only (spec §27).
+ */
 @ApiTags('students')
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.ORGANIZER)
 @Controller('students')
 export class StudentsController {
   constructor(
@@ -39,6 +43,7 @@ export class StudentsController {
     return this.studentsService.list(query)
   }
 
+  @Roles(UserRole.ADMIN)
   @Post('import/preview')
   @ApiOperation({
     summary: 'Validate a CSV/XLSX import file without writing anything (spec §8)',
@@ -50,6 +55,7 @@ export class StudentsController {
     return this.importService.preview(requireFile(file))
   }
 
+  @Roles(UserRole.ADMIN)
   @Post('import')
   @ApiOperation({
     summary: 'Import a CSV/XLSX file (re-validates, then applies the valid rows)',
@@ -71,6 +77,7 @@ export class StudentsController {
     return this.studentsService.getById(id)
   }
 
+  @Roles(UserRole.ADMIN)
   @Post()
   @ApiOperation({ summary: 'Create a student' })
   @ApiOkResponse({ type: StudentResponseDto })
@@ -78,6 +85,7 @@ export class StudentsController {
     return this.studentsService.create(dto, user.id)
   }
 
+  @Roles(UserRole.ADMIN)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a student (no hard delete — spec §35)' })
   @ApiOkResponse({ type: StudentResponseDto })
@@ -89,6 +97,7 @@ export class StudentsController {
     return this.studentsService.update(id, dto, user.id)
   }
 
+  @Roles(UserRole.ADMIN)
   @Post(':id/disable')
   @ApiOperation({ summary: 'Disable a student (status INACTIVE — this is the "delete", spec §35)' })
   @ApiOkResponse({ type: StudentResponseDto })
@@ -96,6 +105,7 @@ export class StudentsController {
     return this.studentsService.setStatus(id, StudentStatus.INACTIVE, user.id)
   }
 
+  @Roles(UserRole.ADMIN)
   @Post(':id/enable')
   @ApiOperation({ summary: 'Enable a student (status ACTIVE)' })
   @ApiOkResponse({ type: StudentResponseDto })
@@ -103,6 +113,7 @@ export class StudentsController {
     return this.studentsService.setStatus(id, StudentStatus.ACTIVE, user.id)
   }
 
+  @Roles(UserRole.ADMIN)
   @Post(':id/unlink-line')
   @ApiOperation({ summary: 'Unlink the student LINE account (admin reset, spec §7.1)' })
   @ApiOkResponse({ type: StudentResponseDto })

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
-import { Activity, ActivityStatus, Beacon, Prisma } from '../../generated/prisma/client'
+import { Activity, ActivityStatus, Beacon, Prisma, StudentStatus } from '../../generated/prisma/client'
 import { Paginated, resolvePagination } from '../../common/dto/pagination.dto'
 import { AuthUser } from '../../common/auth/current-user.decorator'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -8,7 +8,7 @@ import { ActivityTimes, validateActivityTimes } from './activity-validation'
 import { ListActivitiesDto, sortToPrismaField } from './dto/list-activities.dto'
 import { CreateActivityDto } from './dto/create-activity.dto'
 import { UpdateActivityDto } from './dto/update-activity.dto'
-import { ActivityDetailDto, ActivityResponseDto, ActivityTimeState } from './dto/activity-response.dto'
+import { ActivityDetailDto, ActivityResponseDto, ActivityTimeState, AttendanceSummaryDto } from './dto/activity-response.dto'
 import { BeaconResponseDto } from '../beacons/dto/beacon-response.dto'
 
 const NOT_FOUND_MESSAGE = 'ไม่พบกิจกรรม'
@@ -93,7 +93,35 @@ export class ActivitiesService {
     })
     if (!activity) throw new NotFoundException(NOT_FOUND_MESSAGE)
     assertCanAccess(activity, user)
-    return toDetail(activity)
+    return await this.detailOf(activity)
+  }
+
+  /** Detail payload every endpoint returns — §24/§44 attendance summary included. */
+  private async detailOf(activity: ActivityDetail): Promise<ActivityDetailDto> {
+    return { ...toDetail(activity), attendanceSummary: await this.attendanceSummary(activity.id) }
+  }
+
+  /** §24/§44 counts: rows for Present/Late/Excused, computed Absent (never persisted). */
+  private async attendanceSummary(activityId: string): Promise<AttendanceSummaryDto> {
+    const [totalStudents, statusCounts] = await Promise.all([
+      this.prisma.student.count({ where: { status: StudentStatus.ACTIVE } }),
+      this.prisma.attendance.groupBy({
+        by: ['status'],
+        where: { activityId },
+        _count: { _all: true },
+      }),
+    ])
+    const by = (status: string): number => statusCounts.find((row) => row.status === status)?._count._all ?? 0
+    const present = by('PRESENT')
+    const late = by('LATE')
+    const excused = by('EXCUSED')
+    return {
+      totalStudents,
+      present,
+      late,
+      excused,
+      absent: Math.max(totalStudents - present - late - excused, 0),
+    }
   }
 
   // --- create / update -----------------------------------------------------
@@ -123,7 +151,7 @@ export class ActivitiesService {
       entityId: activity.id,
       newValue: auditSnapshot(activity),
     })
-    return toDetail(activity)
+    return await this.detailOf(activity)
   }
 
   async update(id: string, dto: UpdateActivityDto, user: AuthUser): Promise<ActivityDetailDto> {
@@ -168,7 +196,7 @@ export class ActivitiesService {
       oldValue: auditSnapshot(current),
       newValue: auditSnapshot(updated),
     })
-    return toDetail(updated)
+    return await this.detailOf(updated)
   }
 
   // --- publish / cancel (spec §12, §35) --------------------------------------
@@ -377,7 +405,7 @@ function toResponse(activity: ActivityWithMeta): ActivityResponseDto {
   }
 }
 
-function toDetail(activity: ActivityDetail): ActivityDetailDto {
+function toDetail(activity: ActivityDetail): Omit<ActivityDetailDto, 'attendanceSummary'> {
   return {
     ...toResponse({ ...activity, _count: { beacons: activity.beacons.length } }),
     beacons: activity.beacons.map((link) => toBeaconResponse(link.beacon)),

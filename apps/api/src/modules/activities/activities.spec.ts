@@ -137,6 +137,9 @@ describe('Activities (integration)', () => {
       creator: { username: ORG1.username },
       beacons: [],
     })
+    // §24 summary: no attendance yet → absent == every ACTIVE student
+    expect(res.body.data.attendanceSummary).toMatchObject({ present: 0, late: 0, excused: 0 })
+    expect(res.body.data.attendanceSummary.absent).toBe(res.body.data.attendanceSummary.totalStudents)
 
     await request(server()).get('/api/v1/activities/no-such-id').set('Cookie', admin.cookie).expect(404)
 

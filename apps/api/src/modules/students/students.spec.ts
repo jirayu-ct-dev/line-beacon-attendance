@@ -389,11 +389,14 @@ describe('Students (integration)', () => {
 
   // --- access control (spec §29) -----------------------------------------------------
 
-  it('organizer (non-admin) → 403 FORBIDDEN envelope on every students route', async () => {
+  it('organizer (non-admin) → 403 FORBIDDEN on every students mutation (reads allowed, spec §19/§23)', async () => {
+    const read = await request(server()).get('/api/v1/students').set('Cookie', organizer.cookie).expect(200)
+    expect(read.body.success).toBe(true)
+
     for (const [method, path] of [
-      ['get', '/api/v1/students'],
       ['post', '/api/v1/students'],
       ['post', '/api/v1/students/some-id/disable'],
+      ['post', '/api/v1/students/some-id/enable'],
     ] as const) {
       const res = await request(server())[method](path).set('Cookie', organizer.cookie).expect(403)
       expect(res.body).toEqual({ success: false, error: { code: 'FORBIDDEN', message: expect.any(String) } })
