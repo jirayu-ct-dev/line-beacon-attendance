@@ -163,6 +163,29 @@ export interface StudentAttendanceRow {
   manualReason: string | null
 }
 
+/** GET /reports/activities/:id payload (apps/api ActivityReportDto, spec §44). */
+export interface ActivityReport {
+  activity: {
+    id: string
+    name: string
+    startAt: string
+    endAt: string
+    checkinOpenAt: string
+    checkinCloseAt: string
+    status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED'
+    organizer: ActivityCreator
+  }
+  summary: AttendanceSummary
+  attendances: AttendanceRow[]
+}
+
+/** GET /reports/students/:id payload (apps/api StudentReportDto). */
+export interface StudentReport {
+  student: { id: string; studentCode: string; name: string; status: 'ACTIVE' | 'INACTIVE' }
+  summary: { total: number; present: number; late: number; excused: number }
+  attendances: StudentAttendanceRow[]
+}
+
 /** GET /dashboard payload (spec §23, §45). */
 export interface DashboardStats {
   today: { activities: number; checkins: number; present: number; late: number }

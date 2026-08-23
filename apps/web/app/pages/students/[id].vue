@@ -2,8 +2,8 @@
 import type { FetchError } from 'ofetch'
 import type { ApiEnvelope, Paginated, Student, StudentAttendanceRow } from '~/utils/api'
 
-// Kept intentionally simple: profile + edit (reuses StudentFormDialog). The
-// attendance history section will be added with the activities/attendance phase.
+// Kept intentionally simple: profile + edit (reuses StudentFormDialog) plus
+// the admin attendance history below (spec §35).
 definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
