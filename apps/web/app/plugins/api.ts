@@ -39,11 +39,13 @@ export default defineNuxtPlugin((nuxtApp) => {
           return await baseApi<T>(request, options)
         } catch {
           // Refresh failed — session is gone. Clear state and go to /login.
+          // Never on /liff/* (student pages): those hold no dashboard session
+          // by design, so a 401 there must not bounce the student to /login.
           await nuxtApp.runWithContext(async () => {
             const { user } = useAuth()
             user.value = null
             const route = useRoute()
-            if (route.path !== '/login') {
+            if (route.path !== '/login' && !route.path.startsWith('/liff/')) {
               await navigateTo('/login', { replace: true })
             }
           })

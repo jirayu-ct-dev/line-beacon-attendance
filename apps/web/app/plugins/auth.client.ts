@@ -13,11 +13,15 @@
  */
 export default defineNuxtPlugin(() => {
   onNuxtReady(async () => {
+    const route = useRoute()
+    // /liff/* is the student world (design doc §6.5): students hold a LINE ID
+    // token, never a dashboard session. Resolving the dashboard user there is
+    // a guaranteed 401 and would bounce the student to the admin /login.
+    if (route.path.startsWith('/liff/')) return
     const { user, fetchUser } = useAuth()
     if (!user.value) {
       await fetchUser()
     }
-    const route = useRoute()
     if (user.value && route.path === '/login') {
       await navigateTo(resolveSafeRedirect(route.query.redirect), { replace: true })
     }
