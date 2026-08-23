@@ -150,6 +150,10 @@ export class LineNotificationService {
           type: params.type,
           status: 'SENT',
           sentAt: { gte: cutoff },
+          // Scoped per activity so back-to-back check-ins of DIFFERENT
+          // activities are delivered (§42 dedup is per attendance, enforced by
+          // the duplicate check in the engine, not by this cooldown).
+          activityId: params.activityId ?? null,
         },
         select: { id: true },
       })

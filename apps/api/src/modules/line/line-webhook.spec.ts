@@ -118,7 +118,7 @@ describe('LINE webhook (integration)', () => {
     await app.close()
   })
 
-  it('accepts a signed enter event from a linked student at a known beacon (NO_ACTIVE_ACTIVITY until Phase 7)', async () => {
+  it('accepts a signed enter event from a linked student at a known beacon (NO_ACTIVE_ACTIVITY — no eligible activity for the beacon)', async () => {
     const res = await postEvents(server(), [event(1, { source: { type: 'user', userId: 'UtestwhLinked01' } })])
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ success: true, data: null })

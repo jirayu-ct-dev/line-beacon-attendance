@@ -25,7 +25,7 @@ export class MeController {
   }
 
   @Get('attendances')
-  @ApiOperation({ summary: "Caller's own attendance history, newest first (may be empty until Phase 7)" })
+  @ApiOperation({ summary: "Caller's own attendance history, newest first (created by the attendance engine (spec §10))" })
   @ApiOkResponse({ type: AttendanceItemDto, isArray: true })
   async attendances(
     @CurrentLineUser() line: LineAuthUser,

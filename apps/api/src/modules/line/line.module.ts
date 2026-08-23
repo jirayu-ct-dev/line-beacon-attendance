@@ -14,7 +14,8 @@ import { LineTokenService, LINE_OIDC_DISCOVERY, LINE_OIDC_DISCOVERY_URL } from '
 /**
  * LINE integration: webhook pipeline + notification service (Phase 4a) and
  * LIFF authentication + account linking + student /me endpoints (Phase 4b,
- * spec §7.1/§35). The attendance engine arrives in Phase 7.
+ * spec §7.1/§35). The attendance engine (BeaconEventService) completes the
+ * check-in pipeline here (spec §10, §37).
  */
 @Module({
   controllers: [LineWebhookController, LineLinkController, MeController],
@@ -44,7 +45,7 @@ import { LineTokenService, LINE_OIDC_DISCOVERY, LINE_OIDC_DISCOVERY_URL } from '
       },
     },
   ],
-  // Phase 7's attendance engine reuses the notification service (spec §20).
+  // The attendance engine reuses the notification service (spec §20).
   exports: [LineNotificationService],
 })
 export class LineModule {}

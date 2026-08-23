@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { BeaconLog } from '../../generated/prisma/client'
+import { Activity, BeaconLog, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
-import { LINE_MESSAGES } from './line-messages'
+import { checkinSuccessMessage, LINE_MESSAGES } from './line-messages'
 import { LineNotificationService } from './line-notification.service'
 
 /**
- * Beacon event business logic (spec §37). Phase 4a implements the steps that
- * do not need the activities module; Phase 7 completes steps 7–10 (activity
- * matching per spec §38, time window, attendance creation) inside
- * matchActivity()/processEnter().
+ * Beacon event business logic (spec §10, §15–§17, §37, §38). Completes the
+ * check-in pipeline for `enter` events: activity matching, time window,
+ * duplicate protection, attendance creation and the §20 notification.
  *
  * This service resolves every event to a terminal processing status and
  * updates the beacon_logs row (§18). Unexpected errors are NOT caught here —
@@ -76,9 +75,12 @@ export class BeaconEventService {
       return
     }
 
-    // §37.7 — find an eligible activity. Phase 7 implements spec §38 matching.
-    const activity = await this.matchActivity(log, beacon.id)
-    if (!activity) {
+    // §37.7 — eligible activities (spec §38): PUBLISHED and linked to this
+    // beacon. An INACTIVE/MAINTENANCE beacon cannot serve check-ins (§31) and
+    // lands in NO_ACTIVE_ACTIVITY — the closest status the §18 enum offers.
+    const candidates =
+      beacon.status === 'ACTIVE' ? await this.findCandidateActivities(beacon.id) : []
+    if (candidates.length === 0) {
       // Spec §41: NO_ACTIVE_ACTIVITY + cooldown notification so a repeatedly
       // broadcasting beacon does not spam the student (§42).
       await this.prisma.beaconLog.update({
@@ -102,27 +104,130 @@ export class BeaconEventService {
       return
     }
 
-    // TODO(Phase 7 — attendance engine, spec §37.8–10 / §16): validate the
-    // check-in window using log.eventTimestamp (THE authoritative check-in
-    // time — never server receive time), check for an existing attendance,
-    // then create it under UNIQUE(activity_id, student_id) (§17) and send the
-    // §20 success/late notification.
+    // §37.8 — time window from THE event timestamp (§16), never server time.
+    const ts = log.eventTimestamp
+    const inWindow = candidates.filter(
+      (activity) => ts >= activity.checkinOpenAt && ts <= activity.checkinCloseAt,
+    )
+    if (inWindow.length === 0) {
+      // Too early or past close (§16, §55) — cooldown notification like
+      // NO_ACTIVE_ACTIVITY so repeats do not spam (§42).
+      await this.prisma.beaconLog.update({
+        where: { id: log.id },
+        data: {
+          processingStatus: 'OUTSIDE_CHECKIN_WINDOW',
+          studentId: lineAccount.studentId,
+          beaconId: beacon.id,
+        },
+      })
+      const result = await this.notifications.send({
+        studentId: lineAccount.studentId,
+        lineUserId: log.lineUserId,
+        type: 'OUTSIDE_CHECKIN_WINDOW',
+        message: LINE_MESSAGES.OUTSIDE_CHECKIN_WINDOW,
+        replyToken: replyTokenOf(log),
+      })
+      this.logger.log(
+        `Beacon event ${log.webhookEventId}: OUTSIDE_CHECKIN_WINDOW (notification: ${result})`,
+      )
+      return
+    }
+
+    // §38 — overlapping published windows on one beacon should have been
+    // rejected at publish/link; if it still happens, refuse deterministically
+    // (never pick randomly) and create no attendance.
+    if (inWindow.length > 1) {
+      this.logger.error(
+        `Ambiguous activity match for beacon hwid=${beacon.hwid} at ${ts.toISOString()}: ` +
+          `${inWindow.map((a) => `${a.name} (${a.id})`).join(', ')} — no attendance created (spec §38)`,
+      )
+      await this.prisma.beaconLog.update({
+        where: { id: log.id },
+        data: {
+          processingStatus: 'ERROR',
+          studentId: lineAccount.studentId,
+          beaconId: beacon.id,
+        },
+      })
+      return
+    }
+    const activity = inWindow[0]
+
+    // §37.9 — duplicate guard (§17). Existing attendance means a later enter
+    // burst of the same student — record DUPLICATE, never re-notify (§42).
+    const existing = await this.prisma.attendance.findUnique({
+      where: { activityId_studentId: { activityId: activity.id, studentId: lineAccount.studentId } },
+      select: { id: true },
+    })
+    let created = false
+    if (!existing) {
+      // §37.10 + §16 — create with the event timestamp as check_in_at and the
+      // PRESENT/LATE boundary (late_at inclusive on the PRESENT side).
+      // UNIQUE(activity_id, student_id) is the backstop for the create/check
+      // race (§17); a loss lands in DUPLICATE, not an error.
+      const status = ts <= activity.lateAt ? 'PRESENT' : 'LATE'
+      try {
+        const attendance = await this.prisma.attendance.create({
+          data: {
+            activityId: activity.id,
+            studentId: lineAccount.studentId,
+            checkInAt: ts,
+            status,
+            checkinMethod: 'BEACON',
+            beaconId: beacon.id,
+          },
+        })
+        created = true
+        // §20 success notification — reply token first. A failure must not
+        // affect the attendance or the processing result (§10, §55).
+        const result = await this.notifications.send({
+          studentId: lineAccount.studentId,
+          lineUserId: log.lineUserId,
+          type: status,
+          message: checkinSuccessMessage(activity.name, ts, status),
+          replyToken: replyTokenOf(log),
+          activityId: activity.id,
+        })
+        this.logger.log(
+          `Attendance ${attendance.id} created (${status}) for event ${log.webhookEventId} (notification: ${result})`,
+        )
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          this.logger.log(
+            `Attendance race lost for event ${log.webhookEventId} — treating as duplicate (spec §17)`,
+          )
+        } else {
+          throw error
+        }
+      }
+    } else {
+      this.logger.log(
+        `Beacon event ${log.webhookEventId}: DUPLICATE (attendance already exists, spec §17)`,
+      )
+    }
+
+    await this.prisma.beaconLog.update({
+      where: { id: log.id },
+      data: {
+        processingStatus: created ? 'PROCESSED' : 'DUPLICATE',
+        studentId: lineAccount.studentId,
+        beaconId: beacon.id,
+      },
+    })
   }
 
-  /**
-   * Activity matching per spec §38: status=PUBLISHED, beacon matches hwid, and
-   * event_timestamp within [checkin_open_at, checkin_close_at] (event
-   * timestamp, not server time). Overlapping matches must log an error and
-   * create nothing (§38).
-   *
-   * Stub for Phase 4a — the activities module does not exist yet, so every
-   * enter event resolves to NO_ACTIVE_ACTIVITY. The method is the extension
-   * point Phase 7 fills in (inputs intentionally unused until then).
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Phase 7 stub inputs (spec §38)
-  private async matchActivity(_log: BeaconLog, _beaconId: string): Promise<null> {
-    return null
+  /** §38 candidates: PUBLISHED activities linked to the beacon (any window — the window is checked next to distinguish NO_ACTIVE_ACTIVITY from OUTSIDE_CHECKIN_WINDOW). */
+  private async findCandidateActivities(beaconId: string): Promise<Activity[]> {
+    return this.prisma.activity.findMany({
+      where: { status: 'PUBLISHED', beacons: { some: { beaconId } } },
+      orderBy: { checkinOpenAt: 'asc' },
+    })
   }
+}
+
+/** Prisma P2002 = unique constraint violation (here: UNIQUE(activity_id, student_id), §17). */
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
 }
 
 /** The single-use replyToken lives in the raw event payload (spec §9). */
